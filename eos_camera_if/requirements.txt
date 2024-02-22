@@ -1,0 +1,2 @@
+gphoto2==2.5.0
+opencv-python==4.9.0.80

@@ -1,0 +1,5 @@
+websocket-client==1.7.0
+numpy==1.21.5
+gphoto2==2.5.0
+opencv-python==4.9.0.80
+# kortex-api 
