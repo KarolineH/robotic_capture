@@ -1,5 +1,9 @@
 websocket-client==1.7.0
 numpy==1.21.5
 gphoto2==2.5.0
+apriltag==0.0.16
 opencv-python==4.9.0.80
+scikit-image
+imageio==2.4.0
+pytransform3d==3.5.0
 # kortex-api 
