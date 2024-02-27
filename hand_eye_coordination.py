@@ -12,6 +12,8 @@ import kinova_arm_if.helpers.data_io as data_io
 from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 from eos_camera_if.recording import Recorder
+from calibration.calibrate import CamCalibration
+from calibration.helpers import io_util as calibration_io
 
 ''' 
 Routine for calibrating the hand-eye coordination between robot arm and mounted DSLR camera.
@@ -26,7 +28,7 @@ The robot should be in a safe resting position at the beginning. Please check th
 '''
 
 
-output_directory = '/home/kh790/data/hand_eye_coord'
+output_directory = '/home/karo/ws/data/calibration_images/hand_eye'
 camera = '/dev/video2' # change this to the correct video device if needed
 
 
@@ -78,10 +80,13 @@ def record_data(remote_control_cam = False, record_video = False):
         json.dump(pose_data, open(os.path.join(output_directory, 'hand_eye_wrist_poses.json'), 'w'))
 
 
-def get_camera_poses(output_directory):
-    return
+def get_camera_poses(output_directory, cam_calib_file = 'calibration.yaml'):
+    cc = CamCalibration('eos_test', output_directory)
+    cam_name, frame_size, matrix, distortion = calibration_io.read_from_yaml(cam_calib_file)
+    __, __, __, cam_in_world = cc.april_tag_calibration(matrix, distortion)
+    return cam_in_world
 
-def calibration():
+def coordinate(cam_coords, wrist_coords):
     return
 
 if __name__ == "__main__":

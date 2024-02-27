@@ -5,7 +5,8 @@ from helpers import april_tag_util, io_util, transform_util, plotting
 
 class CamCalibration:
 
-    def __init__(self, im_dir):
+    def __init__(self, name, im_dir):
+        self.name = name
         self.im_dir = im_dir
 
     def april_tag_calibration(self, cam_mat=None, dist_coeff=None, pattern_in_world=np.eye(4), im_dir=None):
@@ -65,9 +66,9 @@ class CamCalibration:
 if __name__ == "__main__":
     #im_dir = '/home/kh790/data/april_tag_imgs/'
     im_dir = '/home/karo/ws/data/calibration_images/april_tag/'
-    cam_cal = CamCalibration(im_dir)
+    cam_cal = CamCalibration('test_cam', im_dir)
     #res,mtx,dist,transforms = cam_cal.april_tag_calibration()
     #plotting.plot_transforms(transforms)
-    #io_util.save_to_yaml('calibration.yaml', 'test_camera', res, mtx, dist)
+    #io_util.save_to_yaml('calibration.yaml', cam_cal.name, res, mtx, dist)
     name, size, k, d = io_util.load_from_yaml('calibration.yaml')
     print(name, size, k, d)
