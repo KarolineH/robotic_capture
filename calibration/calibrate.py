@@ -1,9 +1,7 @@
 import os
 import cv2
 import numpy as np
-from helpers import april_tag_util
-from helpers import transform_util
-from helpers import plotting
+from helpers import april_tag_util, io_util, transform_util, plotting
 
 class CamCalibration:
 
@@ -12,6 +10,8 @@ class CamCalibration:
 
     def april_tag_calibration(self, cam_mat=None, dist_coeff=None, pattern_in_world=np.eye(4), im_dir=None):
         """
+        OpenCV camera calibration using AprilTags as a calibration pattern.
+
         Calibrate the camera using images taken of a pre-made pattern of AprilTags. Can estimate intrinsics and extrinsics, or just extrinsics if intrinsics are known.
         Assumes that all images were taken with the same camera, at the same resolution and focal length, and have not been rotated.
         :param cam_mat: initial camera matrix, if known
@@ -21,6 +21,7 @@ class CamCalibration:
         :return: dict of intrinics (incl. RMS re-projection error, camera matrix, distortion coefficients), estimated rotation vectors and translation vectors for all provided images
         """
         # cv2 (opencv) uses a right-handed coordinate system with positive axes going x-right, y-down, z-forward (away from camera through the image plane)
+        # x=red, y=green, z=blue
         # We use the same convention throughout this function.
 
         plot = False # useful for debugging, set to True to plot the axes of the first detected tag into each image
@@ -62,6 +63,11 @@ class CamCalibration:
         return resolution, mtx, dist, cam_in_world # image resolution, camera matrix, distortion coefficients, 4x4 homogeneous transforms of the camera poses in world frame
 
 if __name__ == "__main__":
-    im_dir = '/home/kh790/data/april_tag_imgs/'
+    #im_dir = '/home/kh790/data/april_tag_imgs/'
+    im_dir = '/home/karo/ws/data/calibration_images/april_tag/'
     cam_cal = CamCalibration(im_dir)
-    cam_cal.april_tag_calibration()
+    #res,mtx,dist,transforms = cam_cal.april_tag_calibration()
+    #plotting.plot_transforms(transforms)
+    #io_util.save_to_yaml('calibration.yaml', 'test_camera', res, mtx, dist)
+    name, size, k, d = io_util.load_from_yaml('calibration.yaml')
+    print(name, size, k, d)
