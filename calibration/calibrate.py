@@ -1,7 +1,13 @@
 import os
 import cv2
 import numpy as np
-from helpers import april_tag_util, io_util, transform_util, plotting
+
+# Local imports
+try:
+    # Attempt a relative import
+    from .helpers import april_tag_util, io_util, transform_util, plotting # if being run as a package
+except ImportError:
+    from helpers import april_tag_util, io_util, transform_util, plotting # local case
 
 class CamCalibration:
 

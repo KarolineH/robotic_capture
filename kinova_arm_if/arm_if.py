@@ -5,8 +5,14 @@ from kortex_api.autogen.client_stubs.BaseClientRpc import BaseClient
 from kortex_api.autogen.client_stubs.BaseCyclicClientRpc import BaseCyclicClient
 from kortex_api.autogen.messages import Base_pb2, BaseCyclic_pb2, Common_pb2
 
-import helpers.kortex_util as k_util
-import helpers.data_io as data_io
+# Local imports
+try:
+    # Attempt a relative import
+    from .helpers import kortex_util as k_util # if being run as a package
+    from .helpers import data_io
+except ImportError:
+    import helpers.kortex_util as k_util # local case
+    import helpers.data_io as data_io
 
 class Kinova3:
     def __init__(self):

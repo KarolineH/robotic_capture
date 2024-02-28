@@ -2,7 +2,12 @@
 import cv2
 import time
 import threading
-import helpers.rec_util as rec_util
+
+# Local imports
+try:
+    from .helpers import rec_util # if being run as a package
+except ImportError:
+    import helpers.rec_util as rec_util
 
 class Recorder:
     def __init__(self, device_name=None):
