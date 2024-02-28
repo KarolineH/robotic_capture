@@ -1,9 +1,10 @@
 #!/usr/bin/env python3.8
 
-import sys
 import os
 import time
 import json
+import numpy as np
+import cv2
 from kortex_api.autogen.client_stubs.BaseClientRpc import BaseClient
 from kortex_api.autogen.client_stubs.BaseCyclicClientRpc import BaseCyclicClient
 
@@ -28,7 +29,7 @@ The robot should be in a safe resting position at the beginning. Please check th
 '''
 
 
-output_directory = '/home/karo/ws/data/calibration_images/hand_eye'
+output_directory = '/home/kh790/data/calibration_imgs/hand_eye_coord'
 camera = '/dev/video2' # change this to the correct video device if needed
 
 
@@ -40,8 +41,8 @@ def record_data(remote_control_cam = False, record_video = False):
     if remote_control_cam:
         cam = EOS() # instantiate the camera interface object
         #cam.set_capture_parameters(aperture='AUTO', iso='AUTO', shutterspeed='AUTO', c_AF=False) # change capture settings if needed
-        for i in range(10):
-            cam.manual_focus(2)
+        # for i in range(10):
+        #     cam.manual_focus(2)
     if record_video:
         rec = Recorder(camera) # instantiate the HDMI video recorder object
 
@@ -54,14 +55,14 @@ def record_data(remote_control_cam = False, record_video = False):
         success = True
 
         # double check that the robot is in its safe resting position
-        rest_action = data_io.read_action_from_file("./kinova3_if/rest_on_foam_cushion.json")
+        rest_action = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/rest_on_foam_cushion.json")
         success &= IF.execute_action(base, rest_action)
 
-        example_sequence, action_list = data_io.read_action_from_file("./kinova3_if/hand_eye_sequence.json")
+        example_sequence, action_list = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/hand_eye_sequence.json")
         poses = []
 
         if record_video:
-            rec.start_recording(os.path.join(output_directory, 'hand_eye_calibration.mp4')) # start recording the robot's movement
+            rec.start_recording(os.path.join(output_directory, 'video' ,'hand_eye_calibration.mp4')) # start recording the robot's movement
 
         for i,state in enumerate(action_list):
             IF.execute_action(base, state)
@@ -82,15 +83,38 @@ def record_data(remote_control_cam = False, record_video = False):
 
 def get_camera_poses(output_directory, cam_calib_file = 'calibration.yaml'):
     cc = CamCalibration('eos_test', output_directory)
-    cam_name, frame_size, matrix, distortion = calibration_io.read_from_yaml(cam_calib_file)
-    __, __, __, cam_in_world = cc.april_tag_calibration(matrix, distortion)
-    return cam_in_world
+
+    # FIRST DO regular camera calibration
+    calibration_img_dir = '/home/kh790/data/calibration_imgs/april_tags'
+    res,mtx,dist,transforms, used = cc.april_tag_calibration(im_dir=calibration_img_dir)
+    calibration_io.save_to_yaml('calibration.yaml', cc.name, res, mtx, dist)
+
+    # THEN evaluate the images take in the hand-eye calibration routine
+    cam_name, frame_size, matrix, distortion = calibration_io.load_from_yaml(cam_calib_file)
+    __, __, __, cam_in_world, used = cc.april_tag_calibration(matrix, distortion)
+    return cam_in_world, used
+
+def get_wrists_poses(output_directory):
+    with open(os.path.join(output_directory, 'hand_eye_wrist_poses.json'), 'r') as f:
+        wrist_poses = json.load(f)
+    return wrist_poses
 
 def coordinate(cam_coords, wrist_coords):
+    # TODO: Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z]
+    # Camera poses are given as 4x4 homogeneous transformation matrices
+    # cv2.calibrateHandEye() takes 4x4 matrices as input, so we need to convert the wrist poses to 4x4 matrices 
+
+
     return
 
 if __name__ == "__main__":
-    record_data(remote_control_cam = True, record_video = False)
-    # get_camera_poses(output_directory)
-    # calibration()
+    #record_data(remote_control_cam = True, record_video = False)
+    cam_in_world, used = get_camera_poses(output_directory)
+
+    all_imgs = [f for f in os.listdir(output_directory) if f.endswith('.JPG')]
+    indices = np.asarray([np.where(np.array(all_imgs)==name) for name in used]).flatten()
+    wrist_in_robot = get_wrists_poses(output_directory)
+    wrist_in_robot = np.array(wrist_in_robot)[indices] # [x, y, z, theta_x, theta_y, theta_z]
+
+    coordinate(cam_in_world, wrist_in_robot)
     pass
