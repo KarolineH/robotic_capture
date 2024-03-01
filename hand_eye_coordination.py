@@ -10,6 +10,7 @@ from kortex_api.autogen.client_stubs.BaseCyclicClientRpc import BaseCyclicClient
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
+import kinova_arm_if.helpers.conversion as conv
 from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 from eos_camera_if.recording import Recorder
@@ -101,8 +102,30 @@ def get_wrists_poses(output_directory):
 
 def coordinate(cam_coords, wrist_coords):
     # TODO: Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z]
+
+    wrist_R = []
+    wrist_t = []
+    for pose in wrist_coords:
+        pose = np.array(pose)
+        tvec = pose[:3]
+        euler_angles = pose[3:]
+        rmat = conv.euler_to_mat(*euler_angles)
+        wrist_R.append(rmat)
+        wrist_t.append(tvec)
+    
+    wrist_R = np.array(wrist_R)
+    wrist_t = np.array(wrist_t)
+
     # Camera poses are given as 4x4 homogeneous transformation matrices
-    # cv2.calibrateHandEye() takes 4x4 matrices as input, so we need to convert the wrist poses to 4x4 matrices 
+    # I think these need to be inverted though, it calls for the inverse transformation
+    cam_R = cam_coords[:,:3,:3]
+    cam_t = cam_coords[:,:3,3]
+
+    # cv2.calibrateHandEye() takes 4x4 matrices as input
+    R_cam2grippe, t_cam2grippe = cv2.calibrateHandEye(wrist_R, wrist_t, cam_R, cam_t, method=cv2.CALIB_HAND_EYE_PARK)
+    # there are also different methods available, see (HandEyeCalibrationMethod)
+
+    # maybe use cv2.calibrateRobotWorldHandEye() instead, it spits out the pattern location as well.
 
 
     return
