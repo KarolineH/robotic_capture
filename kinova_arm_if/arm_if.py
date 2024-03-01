@@ -5,6 +5,8 @@ from kortex_api.autogen.client_stubs.BaseClientRpc import BaseClient
 from kortex_api.autogen.client_stubs.BaseCyclicClientRpc import BaseCyclicClient
 from kortex_api.autogen.messages import Base_pb2, BaseCyclic_pb2, Common_pb2
 
+from kortex_api.autogen.client_stubs.ControlConfigClientRpc import ControlConfigClient
+
 # Local imports
 try:
     # Attempt a relative import
@@ -17,6 +19,16 @@ except ImportError:
 class Kinova3:
     def __init__(self):
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
+        self.camera_frame_transform = None
+        self.camera_weight = 1.8 #kg
+        self.camera_center_of_mass = np.array([0, 0, 0]) #meters
+
+    def set_tool_info(self, control_config):
+        # TODO: Figure out how to set the tool information correctly
+
+        control_config.GetToolConfiguration()
+        #control_config.SetToolConfiguration()
+        return
 
     # Create closure to set an event after an END or an ABORT
     def check_for_end_or_abort(self, e):
@@ -175,6 +187,7 @@ def main():
         # Create required services
         base = BaseClient(router)
         base_cyclic = BaseCyclicClient(router)
+        control_config = ControlConfigClient(router)
         # Example core
         success = True
 
