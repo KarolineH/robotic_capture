@@ -3,7 +3,7 @@ import threading
 import numpy as np
 from kortex_api.autogen.client_stubs.BaseClientRpc import BaseClient
 from kortex_api.autogen.client_stubs.BaseCyclicClientRpc import BaseCyclicClient
-from kortex_api.autogen.messages import Base_pb2, BaseCyclic_pb2, Common_pb2
+from kortex_api.autogen.messages import Base_pb2, BaseCyclic_pb2, Common_pb2, ControlConfig_pb2
 
 from kortex_api.autogen.client_stubs.ControlConfigClientRpc import ControlConfigClient
 
@@ -19,15 +19,26 @@ except ImportError:
 class Kinova3:
     def __init__(self):
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
-        self.camera_frame_transform = None
-        self.camera_weight = 1.8 #kg
-        self.camera_center_of_mass = np.array([0, 0, 0]) #meters
+        self.camera_frame_transform = [0,-0.045,0.085,-90,0,0]# [x, y, z, theta_x, theta_y, theta_z]
+        self.camera_weight = 2#kg
+        self.camera_center_of_mass = np.array([0, 0, 0.085]) #meters
 
     def set_tool_info(self, control_config):
-        # TODO: Figure out how to set the tool information correctly
+        #current_config = control_config.GetToolConfiguration()
 
-        control_config.GetToolConfiguration()
-        #control_config.SetToolConfiguration()
+        new_config = ControlConfig_pb2.ToolConfiguration()
+        new_config.tool_mass = self.camera_weight
+        new_config.tool_mass_center.x = self.camera_center_of_mass[0]
+        new_config.tool_mass_center.y = self.camera_center_of_mass[1]
+        new_config.tool_mass_center.z = self.camera_center_of_mass[2]
+        new_config.tool_transform.x = self.camera_frame_transform[0]
+        new_config.tool_transform.y = self.camera_frame_transform[1]
+        new_config.tool_transform.z = self.camera_frame_transform[2]
+        new_config.tool_transform.theta_x = self.camera_frame_transform[3]
+        new_config.tool_transform.theta_y = self.camera_frame_transform[4]
+        new_config.tool_transform.theta_z = self.camera_frame_transform[5]
+
+        control_config.SetToolConfiguration(new_config)
         return
 
     # Create closure to set an event after an END or an ABORT
@@ -188,6 +199,7 @@ def main():
         base = BaseClient(router)
         base_cyclic = BaseCyclicClient(router)
         control_config = ControlConfigClient(router)
+        IF.set_tool_info(control_config)
         # Example core
         success = True
 
