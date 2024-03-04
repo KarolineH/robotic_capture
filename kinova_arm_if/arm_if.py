@@ -17,13 +17,22 @@ except ImportError:
     import helpers.data_io as data_io
 
 class Kinova3:
-    def __init__(self):
+    def __init__(self, router, transform=None):
+        
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
-        self.camera_frame_transform = [0,-0.045,0.085,-90,0,0]# [x, y, z, theta_x, theta_y, theta_z]
+        if transform is None:
+            self.camera_frame_transform = [0,-0.045,0.085,-90,0,0]# [x, y, z, theta_x, theta_y, theta_z]
+        else:
+            self.camera_frame_transform = transform
         self.camera_weight = 2#kg
         self.camera_center_of_mass = np.array([0, 0, 0.085]) #meters
 
-    def set_tool_info(self, control_config):
+        self.base = BaseClient(router)
+        self.base_cyclic = BaseCyclicClient(router)
+        self.control_config = ControlConfigClient(router)
+        self.set_tool_info()
+
+    def set_tool_info(self):
         #current_config = control_config.GetToolConfiguration()
 
         new_config = ControlConfig_pb2.ToolConfiguration()
@@ -38,7 +47,7 @@ class Kinova3:
         new_config.tool_transform.theta_y = self.camera_frame_transform[4]
         new_config.tool_transform.theta_z = self.camera_frame_transform[5]
 
-        control_config.SetToolConfiguration(new_config)
+        self.control_config.SetToolConfiguration(new_config)
         return
 
     # Create closure to set an event after an END or an ABORT
@@ -82,17 +91,17 @@ class Kinova3:
                 e.set()
         return check
 
-    def move_to_home_position(self, base):
+    def move_to_home_position(self):
         # Make sure the arm is in Single Level Servoing mode
         base_servo_mode = Base_pb2.ServoingModeInformation()
         base_servo_mode.servoing_mode = Base_pb2.SINGLE_LEVEL_SERVOING
-        base.SetServoingMode(base_servo_mode)
+        self.base.SetServoingMode(base_servo_mode)
         
         # Move arm to ready position
         print("Moving the arm to a safe position")
         action_type = Base_pb2.RequestedActionType()
         action_type.action_type = Base_pb2.REACH_JOINT_ANGLES
-        action_list = base.ReadAllActions(action_type)
+        action_list = self.base.ReadAllActions(action_type)
         action_handle = None
         for action in action_list.action_list:
             if action.name == "Home":
@@ -103,14 +112,14 @@ class Kinova3:
             return False
 
         e = threading.Event()
-        notification_handle = base.OnNotificationActionTopic(
+        notification_handle = self.base.OnNotificationActionTopic(
             self.check_for_end_or_abort(e),
             Base_pb2.NotificationOptions()
         )
 
-        base.ExecuteActionFromReference(action_handle)
+        self.base.ExecuteActionFromReference(action_handle)
         finished = e.wait(self.TIMEOUT_DURATION)
-        base.Unsubscribe(notification_handle)
+        self.base.Unsubscribe(notification_handle)
 
         if finished:
             print("Safe position reached")
@@ -118,27 +127,27 @@ class Kinova3:
             print("Timeout on action notification wait")
         return finished
 
-    def execute_sequence(self, base, sequence):
+    def execute_sequence(self, sequence):
 
         e = threading.Event()
-        notification_handle = base.OnNotificationSequenceInfoTopic(
+        notification_handle = self.base.OnNotificationSequenceInfoTopic(
             self.check_for_sequence_end_or_abort(e),
             Base_pb2.NotificationOptions()
         )
 
         print("Creating sequence on device and executing it")
-        handle_sequence = base.CreateSequence(sequence)
-        base.PlaySequence(handle_sequence)
+        handle_sequence = self.base.CreateSequence(sequence)
+        self.base.PlaySequence(handle_sequence)
 
         print("Waiting for movement to finish ...")
         finished = e.wait(self.TIMEOUT_DURATION)
-        base.Unsubscribe(notification_handle)
+        self.base.Unsubscribe(notification_handle)
 
         if not finished:
             print("Timeout on action notification wait")
         return finished
 
-    def execute_action(self, base, action):
+    def execute_action(self, action):
 
         '''
         Executes an action on the robot.
@@ -148,17 +157,17 @@ class Kinova3:
         
         print("Preparing action movement ...")
         e = threading.Event()
-        notification_handle = base.OnNotificationActionTopic(
+        notification_handle = self.base.OnNotificationActionTopic(
             self.check_for_end_or_abort(e),
             Base_pb2.NotificationOptions()
         )
 
         print("Executing action")
-        base.ExecuteAction(action)
+        self.base.ExecuteAction(action)
 
         print("Waiting for movement to finish ...")
         finished = e.wait(self.TIMEOUT_DURATION)
-        base.Unsubscribe(notification_handle)
+        self.base.Unsubscribe(notification_handle)
 
         if finished:
             print("Movement completed")
@@ -166,52 +175,49 @@ class Kinova3:
             print("Timeout on action notification wait")
         return finished
 
-    def get_pose(self, base_cyclic):
+    def get_pose(self):
         '''
         Retrieve the current pose of the robot.
         Returns an np array of 6 values: [x, y, z, theta_x, theta_y, theta_z]
         '''
-        feedback = base_cyclic.RefreshFeedback()
+        feedback = self.base_cyclic.RefreshFeedback()
         position = np.array([feedback.base.tool_pose_x, feedback.base.tool_pose_y, feedback.base.tool_pose_z])
         orientation = np.array([feedback.base.tool_pose_theta_x, feedback.base.tool_pose_theta_y, feedback.base.tool_pose_theta_z])
         # append together
         pose = np.append(position, orientation)
         return pose
 
-    def get_joint_angles(self, base_cyclic):
+    def get_joint_angles(self):
         '''
         Retrieve the current joint angles of the robot.
         Returns an np array of 6 values: [j1, j2, j3, j4, j5, j6] (degrees)
         '''
-        feedback = base_cyclic.RefreshFeedback()
+        feedback = self.base_cyclic.RefreshFeedback()
         joint_angles = np.asarray([joint.position for joint in feedback.actuators])
         return joint_angles
 
 
 
 def main():
-    IF = Kinova3()
-    # Parse arguments
+    # USAGE EXAMPLE 
+
+    # Get connection arguments
     args = k_util.parseConnectionArguments()
     # Create connection to the device and get the router
     with k_util.DeviceConnection.createTcpConnection(args) as router:
-        # Create required services
-        base = BaseClient(router)
-        base_cyclic = BaseCyclicClient(router)
-        control_config = ControlConfigClient(router)
-        IF.set_tool_info(control_config)
-        # Example core
+        # Then instantiate the session
+        IF = Kinova3(router)
         success = True
 
         # ALL ACTIONS SHOULD GO HERE, WITHIN THE 'WITH' STATEMENT
         # so that the connection is closed properly afterwards
-        success &= IF.move_to_home_position(base)
-        example_sequence,__ = data_io.read_action_from_file("./data/DSLR_example_path.json")
-        success &= IF.execute_sequence(base, example_sequence)
+        success &= IF.move_to_home_position() # move to a pre-defined home position
+        example_sequence,__ = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/DSLR_example_path.json")
+        success &= IF.execute_sequence(example_sequence)
         # MOVE BACK into a stable position before powering off
         # be aware of your surroundings. The path is not always safe!
-        rest_action = data_io.read_action_from_file("./data/rest_on_foam_cushion.json")
-        success &= IF.execute_action(base, rest_action)
+        rest_action = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/rest_on_foam_cushion.json")
+        success &= IF.execute_action(rest_action)
 
         # You can also refer to the 110-Waypoints examples if you want to execute
         # a trajectory defined by a series of waypoints in joint space or in Cartesian space

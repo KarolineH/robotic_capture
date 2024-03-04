@@ -37,8 +37,6 @@ camera = '/dev/video2' # change this to the correct video device if needed
 def record_data(remote_control_cam = False, record_video = False):
 
     # INPUT: set to True if you want to control the camera focus and shutter remotely, False if you want to snap the pictures by hand
-
-    IF = Kinova3() # get robot Python interface object, has all needed methods
     if remote_control_cam:
         cam = EOS() # instantiate the camera interface object
         #cam.set_capture_parameters(aperture='AUTO', iso='AUTO', shutterspeed='AUTO', c_AF=False) # change capture settings if needed
@@ -50,14 +48,14 @@ def record_data(remote_control_cam = False, record_video = False):
     # Create connection to the robot and get the router
     args = k_util.parseConnectionArguments()
     with k_util.DeviceConnection.createTcpConnection(args) as router:
-        # Create required services
-        base = BaseClient(router)
-        base_cyclic = BaseCyclicClient(router)
+        # get robot Python interface object
+        # and deliberately reset the tool transform so we record the wrist positions, not tool positions 
+        IF = Kinova3(router, transform=[0,0,0,0,0,0])
         success = True
 
         # double check that the robot is in its safe resting position
         rest_action = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/rest_on_foam_cushion.json")
-        success &= IF.execute_action(base, rest_action)
+        success &= IF.execute_action(rest_action)
 
         example_sequence, action_list = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/hand_eye_sequence.json")
         poses = []
@@ -66,10 +64,10 @@ def record_data(remote_control_cam = False, record_video = False):
             rec.start_recording(os.path.join(output_directory, 'video' ,'hand_eye_calibration.mp4')) # start recording the robot's movement
 
         for i,state in enumerate(action_list):
-            IF.execute_action(base, state)
+            IF.execute_action(state)
             if i > 1 and i < len(action_list)-1:
                 time.sleep(2) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
-                wrist_pose = IF.get_pose(base_cyclic)
+                wrist_pose = IF.get_pose()
                 poses.append(wrist_pose)
                 if remote_control_cam:
                     #cam.trigger_AF() # trigger the camera to focus
