@@ -8,7 +8,7 @@ def create_detector(family="tag36h11"):
     detector = apriltag.Detector(options)
     return detector
 
-def create_pattern(tag_size=0.03, tag_spacing=0.01, tag_layout=np.array([4,6])):
+def create_pattern(tag_size=0.0298235294118, tag_spacing=0.0149117647058, tag_layout=np.array([4,6])):
     # All tags in the pattern are of the same tag family to distinguish them from other tags in the environment.
     # Measurements are provided in meters.
     # Layout is provided in [rows x columns]
