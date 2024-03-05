@@ -16,7 +16,7 @@ class CamCalibration:
         self.name = name
         self.im_dir = im_dir
 
-    def april_tag_calibration(self, cam_mat=None, dist_coeff=None, pattern_in_world=np.eye(4), im_dir=None):
+    def april_tag_calibration(self, cam_mat=None, dist_coeff=None, pattern_in_world=np.eye(4), im_dir=None, lower_requirements=False):
         """
         OpenCV camera calibration using AprilTags as a calibration pattern.
 
@@ -36,7 +36,7 @@ class CamCalibration:
         if im_dir is None:
             im_dir = self.im_dir
 
-        detector = april_tag_util.create_detector()
+        detector = april_tag_util.create_detector(lower_requirements=lower_requirements)
         corner_array = april_tag_util.create_pattern()
 
         obj_points = []
@@ -50,6 +50,9 @@ class CamCalibration:
             img = cv2.imread(im_dir+'/'+image) # row, column
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             results = detector.detect(gray) # if only part of the pattern is visible, we still use all available tags
+            # This line (above) sometimes causes a segmentation fault. This is not caught here.
+            # If the warning "too many borders in contour_detect (max of 32767!)" is shown, try setting the input lower_requirements=True
+
             if len(results) > 3: # OPENCV requires at least 4 detected location in an image for camera calibration
                 detected_ids = np.asarray([r.tag_id for r in results])
                 image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)

@@ -3,8 +3,13 @@ import numpy as np
 import cv2
 
 
-def create_detector(family="tag36h11"):
-    options = apriltag.DetectorOptions(families=family)
+def create_detector(family="tag36h11", lower_requirements=False):
+    if lower_requirements:
+        options = apriltag.DetectorOptions(families=family, refine_edges=False, quad_contours=False)
+        # these options refine_edges and quad_contours are set to False to circumvent a recurring error with the apriltag library:
+        # "too many borders in contour_detect (max of 32767!)"
+    else:
+        options = apriltag.DetectorOptions(families=family)
     detector = apriltag.Detector(options)
     return detector
 
