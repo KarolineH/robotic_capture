@@ -11,7 +11,7 @@ One or multiple ASTORA SF 120 SoftPanels
 ## Connecting the lights
 1. Plug in the power cable to the back of the light panel(s).
 2. Turn on the light using the power switch on the back of the light panel. Using the knobs on the back, adjust brightness and color temperature manually and check that everything works as expected.
-3. Connect the first light panel to the PC using a **DMX-to-USB** cable. Make sure to connect this using the **DMX in** port at the back of the light panel. 
+3. Connect the first light panel to the PC using a **DMX-to-USB** cable. Make sure to connect this using the **DMX in** port at the back of the light panel. (We use [this](https://www.amazon.co.uk/DSD-TECH-Lighting-Equipment-Controller/dp/B07WV6P5W6?ref_=ast_sto_dp) interface from DSD TECH)
 4. If you are using more than one panel, chain any additional lights to the first one with regular 3-pin DMX cables (out>in).
 4. Attach a **DMX terminator** to the output DMX port of the final light panel in your chain.
 6. If you want to control the chained panels inividually, use the channel dial buttons on the back of each light panel to specify separate channels. 
