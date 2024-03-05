@@ -1,6 +1,9 @@
 #!/usr/bin/env python3.8
 import threading
 import numpy as np
+import yaml
+import os
+import pathlib
 from kortex_api.autogen.client_stubs.BaseClientRpc import BaseClient
 from kortex_api.autogen.client_stubs.BaseCyclicClientRpc import BaseCyclicClient
 from kortex_api.autogen.messages import Base_pb2, BaseCyclic_pb2, Common_pb2, ControlConfig_pb2
@@ -17,20 +20,31 @@ except ImportError:
     import helpers.data_io as data_io
 
 class Kinova3:
-    def __init__(self, router, transform=None):
+    def __init__(self, router, transform_path=None):
         
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
-        if transform is None:
-            self.camera_frame_transform = [0,-0.045,0.085,-90,0,0]# [x, y, z, theta_x, theta_y, theta_z]
+        if transform_path is None:
+            transform_path = str(pathlib.Path(__file__).parent.resolve()) + '/data/frame_transform.yaml'
+        if os.path.exists(transform_path):
+            data = yaml.safe_load(open(transform_path))
+            self.camera_frame_transform = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
+            self.camera_frame_transform[3:] = np.rad2deg(self.camera_frame_transform[3:])
         else:
-            self.camera_frame_transform = transform
-        self.camera_weight = 2#kg
-        self.camera_center_of_mass = np.array([0, 0, 0.085]) #meters
+            self.camera_frame_transform = [0, -0.045, 0.085, -90, 0, 0] # if not available, use this estimate
+        self.camera_weight = 2 #kg, this is an estimate
+        self.camera_center_of_mass = np.array([0, 0, 0.083]) #meters, this is an estimate
 
         self.base = BaseClient(router)
         self.base_cyclic = BaseCyclicClient(router)
         self.control_config = ControlConfigClient(router)
         self.set_tool_info()
+
+    def load_tool_transform(self, path):
+        data = yaml.safe_load(open(path))
+        transform_rad = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
+        transform_deg = np.rad2deg(transform_rad[3:])
+        self.camera_frame_transform = transform_deg
+        return
 
     def set_tool_info(self):
         #current_config = control_config.GetToolConfiguration()

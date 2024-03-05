@@ -5,8 +5,7 @@ import time
 import json
 import numpy as np
 import cv2
-from kortex_api.autogen.client_stubs.BaseClientRpc import BaseClient
-from kortex_api.autogen.client_stubs.BaseCyclicClientRpc import BaseCyclicClient
+import yaml
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
@@ -39,7 +38,7 @@ def record_data(remote_control_cam = False, record_video = False):
     # INPUT: set to True if you want to control the camera focus and shutter remotely, False if you want to snap the pictures by hand
     if remote_control_cam:
         cam = EOS() # instantiate the camera interface object
-        #cam.set_capture_parameters(aperture='AUTO', iso='AUTO', shutterspeed='AUTO', c_AF=False) # change capture settings if needed
+        cam.set_capture_parameters(aperture='AUTO', iso='AUTO', shutterspeed='AUTO', c_AF=True) # change capture settings if needed
         # for i in range(10):
         #     cam.manual_focus(2)
     if record_video:
@@ -80,17 +79,24 @@ def record_data(remote_control_cam = False, record_video = False):
         json.dump(pose_data, open(os.path.join(output_directory, 'hand_eye_wrist_poses.json'), 'w'))
 
 
-def get_camera_poses(output_directory, cam_calib_file = 'calibration.yaml'):
-    cc = CamCalibration('eos_test', output_directory)
+def get_camera_poses(output_directory, calibrate_camera=True, cam_calib_file='calibration.yaml'):
+    '''
+    Retrieve camera poses from the images taken during the hand-eye calibration routine.
+    This is done via AprilTag detection and camera calibration.
+    Optionally also calibrate the intrinsic camera parameters using the same image collection, or load intrinsics from a file.
+    '''
 
-    # FIRST DO regular camera calibration
-    calibration_img_dir = '/home/kh790/data/calibration_imgs/april_tags'
-    res,mtx,dist,transforms, used = cc.april_tag_calibration(im_dir=calibration_img_dir)
-    calibration_io.save_to_yaml('calibration.yaml', cc.name, res, mtx, dist)
-
-    # THEN evaluate the images take in the hand-eye calibration routine
-    cam_name, frame_size, matrix, distortion = calibration_io.load_from_yaml(cam_calib_file)
-    __, __, __, cam_in_world, used = cc.april_tag_calibration(matrix, distortion)
+    cc = CamCalibration('mounted_camera', output_directory)
+    if not calibrate_camera and os.path.exists(cam_calib_file):
+        # load the intrinsic camera parameters from a file
+        cam_name, frame_size, matrix, distortion = calibration_io.load_from_yaml(cam_calib_file)
+        # then evaluate the images and get the extrinsics, using the loaded intrinsics
+        __, __, __, cam_in_world,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
+    else:
+        # alternatively calibrate both intrinsics and extrinsics from the images
+        frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
+        # save the intrinsic camera parameters to a file
+        calibration_io.save_to_yaml(cam_calib_file, cc.name, frame_size, matrix, distortion)
     return cam_in_world, used
 
 def get_wrists_poses(output_directory):
@@ -103,6 +109,9 @@ def coordinate(cam_coords, wrist_coords):
 
     wrist_R = []
     wrist_t = []
+    base_R = []
+    base_t = []
+
     for pose in wrist_coords:
         pose = np.array(pose)
         tvec = pose[:3]
@@ -110,22 +119,56 @@ def coordinate(cam_coords, wrist_coords):
         rmat = conv.euler_to_mat(*euler_angles)
         wrist_R.append(rmat)
         wrist_t.append(tvec)
+
+        M = np.zeros((4,4))
+        M[:3,:3] = rmat
+        M[:3,3] = tvec
+        M[3,3] = 1
+        Mi = np.linalg.inv(M) # robot base in wrist frame
+        base_R.append(Mi[:3,:3])
+        base_t.append(Mi[:3,3])
     
     wrist_R = np.array(wrist_R)
     wrist_t = np.array(wrist_t)
+    base_R = np.array(base_R) # inverse of the above
+    base_t = np.array(base_t) # inverse of the above
 
     # Camera poses are given as 4x4 homogeneous transformation matrices
     # I think these need to be inverted though, it calls for the inverse transformation
-    cam_R = cam_coords[:,:3,:3]
-    cam_t = cam_coords[:,:3,3]
+    pattern_in_cam = []
+    for mat in cam_coords:
+        inv_mat = np.linalg.inv(mat)
+        pattern_in_cam.append(inv_mat)
+    pattern_in_cam = np.array(pattern_in_cam)
+    
+    cam_R = pattern_in_cam[:,:3,:3]
+    cam_t = pattern_in_cam[:,:3,3]
 
-    # cv2.calibrateHandEye() takes 4x4 matrices as input
-    R_cam2grippe, t_cam2grippe = cv2.calibrateHandEye(wrist_R, wrist_t, cam_R, cam_t, method=cv2.CALIB_HAND_EYE_PARK)
+    R_cam2wrist, t_cam2wrist = cv2.calibrateHandEye(wrist_R, wrist_t, cam_R, cam_t)# method=cv2.CALIB_HAND_EYE_PARK)
     # there are also different methods available, see (HandEyeCalibrationMethod)
+    # output is the camera pose relative to the wrist pose, so the transformation from the wrist to the camera
 
+    R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t)#, method=cv2.CALIB_HAND_EYE_PARK)
     # maybe use cv2.calibrateRobotWorldHandEye() instead, it spits out the pattern location as well.
 
+    return R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam
 
+def save_coordination(dir,R,t):
+     # save the transformation to a yaml file
+    
+    # convert to Euler angles
+    euler = conv.mat_to_euler(R)
+    euler_rad = np.deg2rad(euler)
+
+    data = {'frame_id': '',
+    'x_translation': float(t[0][0]),
+    'y_translation': float(t[1][0]),
+    'z_translation': float(t[2][0]),
+    'theta_x': float(euler_rad[0]),
+    'theta_y': float(euler_rad[1]),
+    'theta_z': float(euler_rad[2])
+    }
+    yaml.dump(data, open(target_dir + '/frame_transform.yaml', 'w'), default_flow_style=False)
     return
 
 if __name__ == "__main__":
@@ -137,5 +180,8 @@ if __name__ == "__main__":
     wrist_in_robot = get_wrists_poses(output_directory)
     wrist_in_robot = np.array(wrist_in_robot)[indices] # [x, y, z, theta_x, theta_y, theta_z]
 
-    coordinate(cam_in_world, wrist_in_robot)
-    pass
+    R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = coordinate(cam_in_world, wrist_in_robot)
+
+    import pathlib
+    target_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/data'
+    save_coordination(target_dir, R_cam2wrist, t_cam2wrist)
