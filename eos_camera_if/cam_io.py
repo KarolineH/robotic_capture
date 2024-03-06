@@ -860,17 +860,17 @@ class EOS(object):
         return True, target_file, 'saved to computer'
     
 
-    def capture_burst(self, t=0.5, save_timeout=5, speed=1):
+    def capture_burst(self, t=0.5, save_timeout=5, speed=0):
         '''
         Shoot a quick burst of full-scale images for a duration of t seconds.
         Should achieve about 8-9fps. 
         The image files are saved to the camera storage device first and must be donwloaded separately.
         Returns a list of file locations on the camera.
         Only supported in PHOTO mode.
-        Input: t=duration in seconds (int or float)
+        Input: t=duration in seconds (int or float), save_timeout=seconds to wait for new files, speed=0,1,2 (int)
         Outputs: success=boolean, files=list of strings, msg=string
         '''
-        speeds = ['Continuous high speed', 'Super high speed continuous shooting']
+        speeds = ['Continuous low speed', 'Continuous high speed', 'Super high speed continuous shooting']
 
         if self.mode == 1:
             error_msg = "Camera must be in PHOTO mode to capture burst"
@@ -904,14 +904,14 @@ class EOS(object):
         self.set_config_and_confirm(['drivemode'], ['Single'])
         return True, files, 'saved to camera'
     
-    def start_burst(self, speed=1):
+    def start_burst(self, speed=0):
         '''
         Same as above, but split so this can run continuously and does not need a specified duration.
         Make sure to call stop_burst() some time after this.
         Only supported in PHOTO mode.
         Input: speed=0 or 1 (int), 1 is faster
         '''
-        speeds = ['Continuous high speed', 'Super high speed continuous shooting']
+        speeds = ['Continuous low speed', 'Continuous high speed', 'Super high speed continuous shooting']
         if self.mode == 1:
             error_msg = "Camera must be in PHOTO mode to capture burst"
             print(error_msg)
