@@ -859,7 +859,8 @@ class EOS(object):
             self.set_config_and_confirm(['eosmoviemode'], [0])
         return True, target_file, 'saved to computer'
     
-    def capture_burst(self, t=0.5, save_timeout=5):
+
+    def capture_burst(self, t=0.5, save_timeout=5, speed=1):
         '''
         Shoot a quick burst of full-scale images for a duration of t seconds.
         Should achieve about 8-9fps. 
@@ -869,13 +870,15 @@ class EOS(object):
         Input: t=duration in seconds (int or float)
         Outputs: success=boolean, files=list of strings, msg=string
         '''
+        speeds = ['Continuous high speed', 'Super high speed continuous shooting']
+
         if self.mode == 1:
             error_msg = "Camera must be in PHOTO mode to capture burst"
             print(error_msg)
             return False, None, error_msg
 
         # Set the drive mode to continuous shooting
-        self.set_config_and_confirm(['drivemode'], ['Super high speed continuous shooting'])
+        self.set_config_and_confirm(['drivemode'], [speeds[speed]])
 
         # start shooting but activating remote trigger
         start = time.time()
@@ -883,6 +886,53 @@ class EOS(object):
         while time.time() - start < t:
             pass # wait for the desired duration
         # and turn the trigger OFF again
+        self.set_config_fire_and_forget('eosremoterelease', 'Release Full')
+
+        # after the burst is over, fetch all the files
+        # this allows for faster shooting rather than saving files after each capture
+        files=[]
+        timeout = time.time() + save_timeout # the save timeout stops retrieving of files if no new file has been written for a while
+        while True:
+            event_type, event_data = self.camera.wait_for_event(100)
+            if event_type == gp.GP_EVENT_FILE_ADDED:
+                files.append(event_data.folder +'/'+ event_data.name)
+                timeout = time.time() + save_timeout
+            elif time.time() > timeout:
+                break
+
+        # Finally, set the drive mode back to individual captures
+        self.set_config_and_confirm(['drivemode'], ['Single'])
+        return True, files, 'saved to camera'
+    
+    def start_burst(self, speed=1):
+        '''
+        Same as above, but split so this can run continuously and does not need a specified duration.
+        Make sure to call stop_burst() some time after this.
+        Only supported in PHOTO mode.
+        Input: speed=0 or 1 (int), 1 is faster
+        '''
+        speeds = ['Continuous high speed', 'Super high speed continuous shooting']
+        if self.mode == 1:
+            error_msg = "Camera must be in PHOTO mode to capture burst"
+            print(error_msg)
+            return False, None, error_msg
+
+        # Set the drive mode to continuous shooting
+        self.set_config_and_confirm(['drivemode'], [speeds[speed]])
+
+        # start shooting but activating remote trigger
+        start = time.time()
+        self.set_config_fire_and_forget('eosremoterelease', 'Immediate')
+        return True
+
+
+    def stop_burst(self, save_timeout=5):
+        '''
+        See above.
+        This ends the burst and fetches all resulting file locations.
+        Images have to be downloaded separately.
+        Only supported in PHOTO mode.
+        '''
         self.set_config_fire_and_forget('eosremoterelease', 'Release Full')
 
         # after the burst is over, fetch all the files

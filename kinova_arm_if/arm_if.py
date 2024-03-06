@@ -24,7 +24,7 @@ class Kinova3:
         
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
         if transform_path is None:
-            transform_path = str(pathlib.Path(__file__).parent.resolve()) + '/data/frame_transform.yaml'
+            transform_path = str(pathlib.Path(__file__).parent.parent.resolve()) + '/config/frame_transform.yaml'
         if os.path.exists(transform_path):
             data = yaml.safe_load(open(transform_path))
             self.camera_frame_transform = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
@@ -226,11 +226,11 @@ def main():
         # ALL ACTIONS SHOULD GO HERE, WITHIN THE 'WITH' STATEMENT
         # so that the connection is closed properly afterwards
         success &= IF.move_to_home_position() # move to a pre-defined home position
-        example_sequence,__ = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/DSLR_example_path.json")
+        example_sequence,__ = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/actions/DSLR_example_path.json")
         success &= IF.execute_sequence(example_sequence)
         # MOVE BACK into a stable position before powering off
         # be aware of your surroundings. The path is not always safe!
-        rest_action = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/data/rest_on_foam_cushion.json")
+        rest_action = data_io.read_action_from_file("/home/kh790/ws/robotic_capture/kinova_arm_if/actions/rest_on_foam_cushion.json")
         success &= IF.execute_action(rest_action)
 
         # You can also refer to the 110-Waypoints examples if you want to execute

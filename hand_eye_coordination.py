@@ -6,6 +6,7 @@ import json
 import numpy as np
 import cv2
 import yaml
+import pathlib
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
@@ -153,8 +154,9 @@ def coordinate(cam_coords, wrist_coords):
 
     return R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam
 
-def save_coordination(dir,R,t):
+def save_coordination(R,t):
      # save the transformation to a yaml file
+    config_path = str(pathlib.Path(__file__).parent.resolve()) + '/config/frame_transform.yaml'
     
     # convert to Euler angles
     euler = conv.mat_to_euler(R)
@@ -168,7 +170,7 @@ def save_coordination(dir,R,t):
     'theta_y': float(euler_rad[1]),
     'theta_z': float(euler_rad[2])
     }
-    yaml.dump(data, open(target_dir + '/frame_transform.yaml', 'w'), default_flow_style=False)
+    yaml.dump(data, open(config_path, 'w'), default_flow_style=False)
     return
 
 if __name__ == "__main__":
@@ -181,7 +183,4 @@ if __name__ == "__main__":
     wrist_in_robot = np.array(wrist_in_robot)[indices] # [x, y, z, theta_x, theta_y, theta_z]
 
     R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = coordinate(cam_in_world, wrist_in_robot)
-
-    import pathlib
-    target_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/data'
-    save_coordination(target_dir, R_cam2wrist, t_cam2wrist)
+    save_coordination(R_cam2wrist, t_cam2wrist)
