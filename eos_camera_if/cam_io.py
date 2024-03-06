@@ -529,11 +529,11 @@ class EOS(object):
             msgs += msg
 
         # Trigger the capture
-        success, file_path, msg = self.capture_immediate(download=download, target_path=target_path)
+        success, file_path, cam_path, msg = self.capture_immediate(download=download, target_path=target_path)
         msgs += msg
         time.sleep(0.8) # wait a moment to allow the camera to reset after the capture
 
-        return file_path, msgs
+        return file_path, cam_path, msgs
     
     def capture_video(self, aperture=None, iso=None, shutterspeed=None, c_AF=None, duration=1, target_path='.'):
         '''
@@ -778,7 +778,7 @@ class EOS(object):
         if self.mode == 1:
             error_msg = "Camera must be in PHOTO mode to capture static images"
             print(error_msg)
-            return False, None, error_msg
+            return False, None, None, error_msg
         
         self.set_config_fire_and_forget('eosremoterelease', 'Immediate') # trigger shutter
         timeout = time.time() + 5
@@ -791,16 +791,16 @@ class EOS(object):
                     cam_file = self.camera.file_get(event_data.folder, event_data.name, gp.GP_FILE_TYPE_NORMAL)
                     cam_file.save(target_path+'/'+event_data.name)
                     self.set_config_fire_and_forget('eosremoterelease', 'Release Full') # reset shutter
-                    return True, target_path+'/'+event_data.name, 'downloaded'
+                    return True, target_path+'/'+event_data.name, event_data.folder+'/'+event_data.name, 'downloaded'
                 else:
                     self.set_config_fire_and_forget('eosremoterelease', 'Release Full') # reset shutter
-                    return True, None, 'saved to camera'
+                    return True, None, None, 'saved to camera'
             
             elif time.time() > timeout:
                 error_msg = "Waiting for new file event timed out, capture may have failed."
                 print(error_msg)
                 self.set_config_fire_and_forget(['eosremoterelease'], ['Release Full']) # reset shutter
-                return False, None, error_msg
+                return False, None, None, error_msg
 
     def record_preview_video(self, t=1, target_path ='.', resolution_prio=False):
         '''
