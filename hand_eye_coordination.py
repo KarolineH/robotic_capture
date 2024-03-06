@@ -106,7 +106,8 @@ def get_wrists_poses(output_directory):
     return wrist_poses
 
 def coordinate(cam_coords, wrist_coords):
-    # TODO: Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z]
+    # Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z]
+    # We convert them to 4x4 homogeneous transformation matrices
 
     wrist_R = []
     wrist_t = []
@@ -146,11 +147,10 @@ def coordinate(cam_coords, wrist_coords):
     cam_t = pattern_in_cam[:,:3,3]
 
     R_cam2wrist, t_cam2wrist = cv2.calibrateHandEye(wrist_R, wrist_t, cam_R, cam_t)# method=cv2.CALIB_HAND_EYE_PARK)
-    # there are also different methods available, see (HandEyeCalibrationMethod)
+    # there are also different method implementations available, see (HandEyeCalibrationMethod)
     # output is the camera pose relative to the wrist pose, so the transformation from the wrist to the camera
 
-    R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t)#, method=cv2.CALIB_HAND_EYE_PARK)
-    # maybe use cv2.calibrateRobotWorldHandEye() instead, it spits out the pattern location as well.
+    R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t)
 
     return R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam
 
