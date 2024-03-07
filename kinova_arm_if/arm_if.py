@@ -63,8 +63,26 @@ class Kinova3:
 
         self.control_config.SetToolConfiguration(new_config)
         return
+    
+    def set_speed_limit(self, speeds=[], control_mode=None):
+        # For reference, you can look up the hard limits. Do not change these.
+        # print(self.control_config.GetKinematicHardLimits())
 
-    # Create closure to set an event after an END or an ABORT
+        # Soft limits are the limits used by the controller, these can be set. 
+        # For details print(self.control_config.GetAllKinematicSoftLimits())
+
+        # In angular trajectory mode it is possible to set joint speed (and acceleration limits, which is not yet implemented here) 
+        if len(speeds) == 6 and control_mode is not None:
+            joint_speeds = ControlConfig_pb2.JointSpeedSoftLimits()
+            joint_speeds.control_mode = control_mode # 4 for angular trajectory mode, 5 for cartesian trajectory
+            joint_speeds.joint_speed_soft_limits._values = speeds
+            self.control_config.SetJointSpeedSoftLimits(joint_speeds)
+        else:
+            print('Desired speed not set, check input parameters.')
+
+        #TODO: Also allow speed setting for waypoints.
+        return
+
     def check_for_end_or_abort(self, e):
         """Return a closure checking for END or ABORT notifications
 
@@ -80,7 +98,6 @@ class Kinova3:
                 e.set()
         return check
 
-    # Create closure to set an event after an END or an ABORT
     def check_for_sequence_end_or_abort(self, e):
         """Return a closure checking for END or ABORT notifications on a sequence
 

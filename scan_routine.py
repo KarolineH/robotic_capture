@@ -39,8 +39,7 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
         rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
         success &= IF.execute_action(rest_action)
 
-        #TODO: Add more poses to the sequence, vary the viewpoints more
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/scan_path.json")
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/scan_path2.json")
         for i,state in enumerate(action_list[:1]):
             IF.execute_action(state) # the first 3 poses are just for the robot to reach the starting position
 
