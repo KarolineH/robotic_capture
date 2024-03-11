@@ -38,6 +38,7 @@ class Kinova3:
         self.base_cyclic = BaseCyclicClient(router)
         self.control_config = ControlConfigClient(router)
         self.set_tool_info()
+        self.reset_speed_limit()
 
     def load_tool_transform(self, path):
         data = yaml.safe_load(open(path))
@@ -64,23 +65,61 @@ class Kinova3:
         self.control_config.SetToolConfiguration(new_config)
         return
     
-    def set_speed_limit(self, speeds=[], control_mode=None):
+    def reset_speed_limit(self):
+        '''
+        Reset the speed limit to the default values.
+        '''
+        control_info = ControlConfig_pb2.ControlModeInformation()
+        # for angular trajectory mode
+        control_info.control_mode = 4
+        self.control_config.ResetJointSpeedSoftLimits(control_info)
+        # for cartesian trajectory mode
+        control_info.control_mode = 5
+        self.control_config.ResetJointSpeedSoftLimits(control_info)
+        self.control_config.ResetTwistLinearSoftLimit(control_info)
+        # for cartesian waypoint mode
+        control_info.control_mode = 12
+        self.control_config.ResetJointSpeedSoftLimits(control_info)
+        self.control_config.ResetTwistLinearSoftLimit(control_info)
+        self.control_config.ResetTwistAngularSoftLimit(control_info)
+        return
+
+    def set_speed_limit(self, joint_speeds=[], lin_twist=None, ang_twist=None, control_mode=None):
+        '''
+        Set the desired 'soft' speed limit for the robot.
+        Inputs:
+        speeds: list of 6 speeds (in degrees per second) for each joint.
+        control_mode: 4 for angular trajectory mode, 5 for cartesian trajectory mode, 12 for cartesian waypoint mode.
+        '''
         # For reference, you can look up the hard limits. Do not change these.
         # print(self.control_config.GetKinematicHardLimits())
 
         # Soft limits are the limits used by the controller, these can be set. 
         # For details print(self.control_config.GetAllKinematicSoftLimits())
 
-        # In angular trajectory mode it is possible to set joint speed (and acceleration limits, which is not yet implemented here) 
-        if len(speeds) == 6 and control_mode is not None:
-            joint_speeds = ControlConfig_pb2.JointSpeedSoftLimits()
-            joint_speeds.control_mode = control_mode # 4 for angular trajectory mode, 5 for cartesian trajectory
-            joint_speeds.joint_speed_soft_limits._values = speeds
-            self.control_config.SetJointSpeedSoftLimits(joint_speeds)
-        else:
-            print('Desired speed not set, check input parameters.')
+        # can also set acceleration limits, but this is not yet implemented here
 
-        #TODO: Also allow speed setting for waypoints.
+        if control_mode is None:
+            print('Control mode not set, check input parameters.')
+            return
+
+        if len(joint_speeds) == 6:
+            jspeeds = ControlConfig_pb2.JointSpeedSoftLimits()
+            jspeeds.joint_speed_soft_limits._values = joint_speeds
+            jspeeds.control_mode = control_mode
+            self.control_config.SetJointSpeedSoftLimits(jspeeds)
+        
+        if control_mode == 5 or control_mode == 12 and lin_twist is not None:
+            ltwist = ControlConfig_pb2.TwistLinearSoftLimit()
+            ltwist.control_mode = control_mode
+            ltwist.twist_linear_soft_limit = lin_twist
+            self.control_config.SetTwistLinearSoftLimit(ltwist)
+
+        if control_mode == 12 and ang_twist is not None:
+            atwist = ControlConfig_pb2.TwistAngularSoftLimit()
+            atwist.control_mode = control_mode
+            atwist.twist_angular_soft_limit = ang_twist
+            self.control_config.SetTwistAngularSoftLimit(atwist)
         return
 
     def check_for_end_or_abort(self, e):
