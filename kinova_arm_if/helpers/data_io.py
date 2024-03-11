@@ -102,7 +102,7 @@ def create_angular_action(joint_angles=None, delta=None, base_cyclic=None):
 def create_cartesian_action(pose=None, delta=None, base_cyclic=None):
 
     '''
-    Creates an angular action to be executed by the robot.
+    Creates a cartesian action to be executed by the robot.
     Provide either a target pose or a pose delta, starting from the current pose.
     If both are provided, the target pose will be used.
     Input is a list or np.array of 6 values: [x, y, z, theta_x, theta_y, theta_z]
@@ -117,7 +117,8 @@ def create_cartesian_action(pose=None, delta=None, base_cyclic=None):
     cartesian_pose = action.reach_pose.target_pose
     if pose is not None:
         delta = pose
-        starting_pose = np.array([0,0,0,90,0,90])
+        starting_pose = np.array([0,0,0,0,0,0])
+        #TODO: Check if zeroes is the correct default
     elif delta is not None and base_cyclic is not None:
         starting_pose = get_pose(base_cyclic)
     else:
@@ -173,3 +174,10 @@ def get_joint_angles(base_cyclic):
     feedback = base_cyclic.RefreshFeedback()
     joint_angles = np.asarray([joint.position for joint in feedback.actuators])
     return joint_angles
+
+def state_to_pose(angles, base):
+    '''
+    Convert joint angles to cartesian pose
+    '''
+    pose = base.ComputeForwardKinematics(angles)
+    return pose

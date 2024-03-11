@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.8
 
-import os
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -9,13 +8,14 @@ import pathlib
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
 from kinova_arm_if.arm_if import Kinova3
-from eos_camera_if.cam_io import EOS
-import kinova_arm_if.helpers.conversion as conv
-
+from calibration.calibrate import CamCalibration
+from calibration.helpers import io_util as calibration_io
 
 def set_vs_measured_states():
     test_speed_limits = [10,20,30,40]
     num_measurements = 40
+    actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
+    sequence, action_list = data_io.read_action_from_file(actions_dir + '/scan_path.json')
 
     # Create connection to the robot
     args = k_util.parseConnectionArguments()
@@ -24,7 +24,6 @@ def set_vs_measured_states():
         success = True
 
         # double check that the robot starts out in its safe resting position
-        actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
         rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
         success &= IF.execute_action(rest_action)
 
@@ -33,13 +32,12 @@ def set_vs_measured_states():
 
         for speed in test_speed_limits:
             joint_speeds = [speed] * 6
-            IF.set_speed_limit(speeds=joint_speeds, control_mode=4)
+            IF.set_speed_limit(joint_speeds=joint_speeds, control_mode=4)
             
             errors_by_speed = []
             timesteps_by_speed = []
 
             # Reach a series of joint states
-            sequence, action_list = data_io.read_action_from_file(actions_dir + '/scan_path.json')
             for i,state in enumerate(action_list):
                 target = [joint.value for joint in list(state.reach_joint_angles.joint_angles.joint_angles)]
                 IF.execute_action(state)
@@ -62,18 +60,11 @@ def set_vs_measured_states():
         errors = np.asarray(errors_overall) # shape [speeds,states,measurements,joints]
         timesteps = np.asarray(timesteps_overall) # shape [speeds,states,measurements,joints]
 
-        with open('/home/kh790/data/test_measurements/states_errors.npy', 'wb') as f:
+        with open('/home/kh790/data/test_measurements/set_vs_measured_states/states_errors.npy', 'wb') as f:
             np.save(f, errors)
-        with open('/home/kh790/data/test_measurements/states_timesteps.npy', 'wb') as f:
+        with open('/home/kh790/data/test_measurements/set_vs_measured_states/states_timesteps.npy', 'wb') as f:
             np.save(f, timesteps)
     return
-
-
-def set_vs_measured_poses():
-    # Reach a series cartesian coordinates
-    #...
-    return
-
 
 def plot_errors(x, y, name):
     plt.figure()
@@ -87,9 +78,13 @@ def plot_errors(x, y, name):
     return
 
 def pose_vs_apriltag():
+    name, frame_size, matrix, distortion = calibration_io.load_from_yaml('/home/kh790/ws/robotic_capture/config/camera_info.yaml')
+    cc = CamCalibration(name, '/home/kh790/data/test_measurements/set_vs_measured_states')
+    __, __, __, cam_in_world, used_images = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
     return
 
 
 
 if __name__ == "__main__":
+    #pose_vs_apriltag()
     set_vs_measured_states()

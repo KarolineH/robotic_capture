@@ -28,8 +28,8 @@ def load_from_yaml(in_file):
     with open(in_file, 'r') as f:
         calib = yaml.safe_load(f)
     name = calib['camera_name']
-    matrix = np.asarray(calib['camera_matrix'])
-    distortion = np.asarray(calib['distortion_coefficients'])
+    matrix = np.asarray(calib['camera_matrix']['data']).reshape([3,3])
+    distortion = np.asarray(calib['distortion_coefficients']['data'])
     frame_size = (calib['image_width'], calib['image_height'])
     return name, frame_size, matrix, distortion
 
