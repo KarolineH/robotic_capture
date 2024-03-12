@@ -1,8 +1,8 @@
 #!/usr/bin/env python3.8
 
 import os
-import yaml
 import pathlib
+import datetime
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
@@ -14,13 +14,14 @@ from calibration.helpers import io_util as calibration_io
 
 ''' 
 Routine for calibrating the robot-mounted camera (intrinsics).
-This should be performed ideally every time the system is started up, but at least every time after relevant camera or lens parameters have been changed.
+This should be performed ideally every time the system is booted up, but at least after any relevant camera or lens parameters have been changed.
 
-Place a AprilTag calibration pattern down in the robot's workspace, and make sure the camera can see it from all angles.
-This routine will move the robot through a pre-defined routine record either a rapid series full-resolution images or the HDMI video feed along the way.
+Place an AprilTag calibration pattern down in the robot's workspace, and make sure the camera can see it from all angles.
+This routine will move the robot through a pre-defined routine and record either a rapid series full-resolution images or the HDMI video feed along the way.
+It is not advised to do both at the same time but you can run the routine twice if you need both types of data.
 
 Before running, make sure the camera and robot are both connected, powered on, and ready to receive commands.
-If using HDMI feed, the camera should be connected using both the USB and HDMI port.
+If using the HDMI feed, the camera should be connected using both the USB and HDMI port.
 The robot should be in a safe resting position at the beginning. Please check that the movement routine is safe before running.
 '''
 
@@ -28,9 +29,23 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
     '''
     Move the robot, capture full-res still images OR 1080p HDMI video for camera calibration.
     Robot/wrist/camera poses are not recorded for this.
+    Input parameters:
+    capture_params: list of camera capture parameters, these are by default set to minimise Bokeh effects (small aperture) and to facilitate better focus on the calibration pattern.
+    use_hdmi_stream: if True, the HDMI video stream is recorded, If False, a burst of full-resolution still images is captured.
+    hdmi_device: the device name of the HDMI capture device, by default this is set to /dev/video2 (not needed if use_hdmi_stream is False)
+    output_directory: the directory where the images or video will be saved. A sub-directory will be created at the location for each run.
+    Returns the directory where the images or video are saved.
     '''
 
-    # TODO: make sure the image directory exists and is empty!!
+    # Prepare the image/video output directory
+    if not os.path.exists(output_directory):
+        print(f"Image output directory {output_directory} does not exist. Please specify an existing location and try again.")
+        return
+    else:
+        # create a new sub-directory at the target location so that images from each run are kept separate
+        stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        im_dir = os.path.join(output_directory, stamp)
+        os.mkdir(im_dir)
 
     # instantiate the camera interface object
     # change capture settings if needed
@@ -55,44 +70,59 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         # TODO: Improve the motion sequence. Look also at Waypoints to achieve a smooth motion.
         sequence, action_list = data_io.read_action_from_file(actions_dir + "/DSLR_example_path.json")
         for i,state in enumerate(action_list[:4]):
-            IF.execute_action(state) # the first 4 poses are just for the robot to reach the starting position
+            IF.execute_action(state) # the first 4 poses in this specific movement sequence are just for the robot to reach the actual starting position
 
-        # Start recording when the robot reaches the correct state
+        # Start recording once the robot reaches the starting state
         if use_hdmi_stream:
             # EITHER start recording HDMI output stream to a file
-            rec.start_recording(os.path.join(output_directory, 'video' ,'camera_calibration.mp4'))
+            rec.start_recording(os.path.join(im_dir,'camera_calibration_feed.mp4'))
         else:
             # OR start capturing a burst (=rapid series) of full-resolution still images
-            burst_running = cam.start_burst(speed=0)
+            active_burst = cam.start_burst(speed=0)
 
         # Execute the rest of the movement sequence
         for i,state in enumerate(action_list[4:]):
             IF.execute_action(state)
 
-        # And stop the recording/capture
+        # Finally, stop the recording/capture
         if use_hdmi_stream:           
-            rec.stop_recording()
-            # TODO: Convert into single frames/images
+            rec.stop_recording() # stop the recording
+            video_to_frames() # convert mp4 video file into series of images
         else:
-            sucess, files, msg =cam.stop_burst()
+            sucess, files, msg =cam.stop_burst() # stop the capture
             for path in files:
-                # Files need to be downloaded here, which might take a while
-                cam.download_file(path, target_file=os.path.join(output_directory,path.split('/')[-1]))
+                # Now files need to be downloaded from the camera storage to the PC, which might take a while
+                # Files are named in ascending alpha-numeric order, so they can be sorted by name
+                cam.download_file(path, target_file=os.path.join(im_dir,path.split('/')[-1]))
+    return im_dir
+
+def video_to_frames():
+    # TODO: Convert into single frames/images
     return
 
 def calibrate(calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibration_imgs/cam_calib', save=True):
     '''
     Perform calibration using the images in im_dir.
     This is done via AprilTag detection and OpenCV camera calibration.
+    Assumes the standard AprilTag pattern used in our lab, can be altered if needed, see the calibration module for details.
     '''
 
     cc = CamCalibration('mounted_camera', im_dir)
     frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
-    calibration_io.save_to_yaml(calib_file, cc.name, frame_size, matrix, distortion)
+    if save:
+        calibration_io.save_to_yaml(calib_file, cc.name, frame_size, matrix, distortion)
     return frame_size, matrix, distortion, cam_in_world, used
 
 if __name__ == "__main__":
-    #record_data(use_hdmi_stream=True)
-    calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config'
-    target_file = calibr_dir + '/camera_info.yaml'
-    __, matrix, distortion, __, __ = calibrate(target_file)
+
+    # First, run the data recording routine. Please be careful, this is a potentially dangerous operation. Be aware of your surroundings. The robot has no collision detection or obstacle awareness in this mode.
+    im_dir = record_data(use_hdmi_stream=True)
+
+    # Then use the recorded data to calibrate the camera (or optionally use a different set of images and skip the recording routine)
+    # Specify a target file, where the calibration parameters will be saved
+    calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config' # default location is the config directory of this package
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") # use the current date and time as a unique identifier, prevents overwriting previous calibrations
+    target_file = calibr_dir + f'/camera_info_{stamp}.yaml'
+    # Optionally specify a different image input directory
+    #im_dir = '/home/karo/ws/data/calibration_images/cam_calib_test/' # you can also specify a different directory here
+    __, matrix, distortion, __, __ = calibrate(calib_file=target_file, im_dir=im_dir)
