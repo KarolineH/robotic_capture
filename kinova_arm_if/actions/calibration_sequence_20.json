@@ -1,0 +1,1239 @@
+{
+  "sequences": {
+    "sequence": [
+      {
+        "applicationData": {
+          "kinova": {
+            "color": 0
+          }
+        },
+        "handle": {
+          "identifier": 10043,
+          "permission": 7
+        },
+        "name": "calibration_sequence_20",
+        "tasks": [
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10168,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 181.5246124267578,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 302.037353515625,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 213.74671936035156,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 1.5362502336502075,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 91.098876953125,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 237.7090606689453,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Camera UP position"
+            },
+            "groupIdentifier": 0
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10855,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 289.816650390625,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 0.9037205576896667,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.3517761230469,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 263.8988037109375,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 275.08697509765625,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 271.0718688964844,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:26:10)"
+            },
+            "groupIdentifier": 1
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10856,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 289.818603515625,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 345.9216613769531,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.35711669921875,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 263.8968811035156,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 275.0771484375,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 266.623046875,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:27:30)"
+            },
+            "groupIdentifier": 2
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10857,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 289.8183898925781,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 329.7216796875,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.3583068847656,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 263.895263671875,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 276.3201599121094,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 261.23883056640625,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:27:47)"
+            },
+            "groupIdentifier": 3
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10858,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 289.8179626464844,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 316.59332275390625,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.3589782714844,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 263.85577392578125,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 276.6950988769531,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 259.2950439453125,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:28:01)"
+            },
+            "groupIdentifier": 4
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10859,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 285.157958984375,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 297.97186279296875,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.4241943359375,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 263.8543701171875,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 276.89862060546875,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 252.89422607421875,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:28:20)"
+            },
+            "groupIdentifier": 5
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10860,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 283.7626953125,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 281.2940673828125,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.4246520996094,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 263.85382080078125,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 278.30340576171875,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 249.56822204589844,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:28:36)"
+            },
+            "groupIdentifier": 6
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10861,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 260.0828857421875,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 282.32794189453125,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.42449951171875,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 265.35858154296875,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 273.29681396484375,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 252.345947265625,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:28:54)"
+            },
+            "groupIdentifier": 7
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10862,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 247.738037109375,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 283.5001525878906,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.4242248535156,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 265.3586730957031,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 270.7007751464844,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 252.345947265625,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:29:05)"
+            },
+            "groupIdentifier": 8
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10863,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 247.73997497558594,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 299.05718994140625,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.4239196777344,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 264.8714599609375,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 270.70001220703125,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 261.1236267089844,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:29:22)"
+            },
+            "groupIdentifier": 9
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10864,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 247.74124145507812,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 317.55078125,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.42236328125,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 293.5145263671875,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 268.4544372558594,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 261.1240539550781,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:29:39)"
+            },
+            "groupIdentifier": 10
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10865,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 220.18386840820312,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 305.36077880859375,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.42041015625,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 348.8039855957031,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 256.5146484375,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 261.1241760253906,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:29:59)"
+            },
+            "groupIdentifier": 11
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10866,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 186.22320556640625,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 322.1584167480469,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 359.3739013671875,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 66.86796569824219,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 263.63360595703125,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 266.9084167480469,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:30:20)"
+            },
+            "groupIdentifier": 12
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10867,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 186.2222137451172,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 322.814453125,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 53.07863998413086,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 86.07090759277344,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 258.6346435546875,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 304.23504638671875,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:31:04)"
+            },
+            "groupIdentifier": 13
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10868,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 157.8662109375,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 343.3066101074219,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 79.95043182373047,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 98.42056274414062,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 278.0132751464844,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 314.5447082519531,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:31:48)"
+            },
+            "groupIdentifier": 14
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10869,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 137.4881591796875,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 0.9009317755699158,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 120.58153533935547,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 80.53823852539062,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 270.34521484375,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 351.43310546875,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:32:17)"
+            },
+            "groupIdentifier": 15
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10870,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 105.43610382080078,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 0.8751482963562012,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 116.80754852294922,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 77.5386734008789,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 296.50164794921875,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 351.4332580566406,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:32:28)"
+            },
+            "groupIdentifier": 16
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10871,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 66.84681701660156,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 0.7095291614532471,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 98.39864349365234,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 86.84739685058594,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 301.15081787109375,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 351.43310546875,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:32:43)"
+            },
+            "groupIdentifier": 17
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10872,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 31.6846981048584,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 347.0785827636719,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 80.35794067382812,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 150.69119262695312,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 337.6561584472656,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 296.74786376953125,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:33:16)"
+            },
+            "groupIdentifier": 18
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10873,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 2.896300792694092,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 347.9157409667969,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 78.0282211303711,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 160.65863037109375,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 336.5841369628906,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 300.02337646484375,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:33:26)"
+            },
+            "groupIdentifier": 19
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10874,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 4.444859504699707,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 14.359783172607422,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 55.3330078125,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 149.5063018798828,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 304.59307861328125,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 300.0236511230469,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:33:37)"
+            },
+            "groupIdentifier": 20
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10875,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 4.444780349731445,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 14.812230110168457,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 5.532866477966309,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 148.67721557617188,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 339.5162658691406,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 300.0236511230469,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Snapshot (2023-12-04 17:33:45)"
+            },
+            "groupIdentifier": 21
+          },
+          {
+            "applicationData": {
+              "kinova": {}
+            },
+            "action": {
+              "applicationData": {
+                "kinova": {
+                  "color": 0
+                }
+              },
+              "handle": {
+                "identifier": 10168,
+                "permission": 7,
+                "actionType": 7
+              },
+              "reachJointAngles": {
+                "jointAngles": {
+                  "jointAngles": [
+                    {
+                      "value": 181.5246124267578,
+                      "jointIdentifier": 0
+                    },
+                    {
+                      "value": 302.037353515625,
+                      "jointIdentifier": 1
+                    },
+                    {
+                      "value": 213.74671936035156,
+                      "jointIdentifier": 2
+                    },
+                    {
+                      "value": 1.5362502336502075,
+                      "jointIdentifier": 3
+                    },
+                    {
+                      "value": 91.098876953125,
+                      "jointIdentifier": 4
+                    },
+                    {
+                      "value": 237.7090606689453,
+                      "jointIdentifier": 5
+                    }
+                  ]
+                },
+                "constraint": {
+                  "type": 0,
+                  "value": 0
+                }
+              },
+              "name": "Camera UP position"
+            },
+            "groupIdentifier": 22
+          }
+        ]
+      }
+    ]
+  }
+}

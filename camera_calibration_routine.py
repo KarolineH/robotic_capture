@@ -1,8 +1,12 @@
 #!/usr/bin/env python3.8
+'''
+Run this script using Python <= 3.8
+'''
 
 import os
 import pathlib
 import datetime
+import time
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
@@ -25,7 +29,7 @@ If using the HDMI feed, the camera should be connected using both the USB and HD
 The robot should be in a safe resting position at the beginning. Please check that the movement routine is safe before running.
 '''
 
-def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False, hdmi_device = '/dev/video2', output_directory='/home/kh790/data/calibration_imgs/cam_calib'):
+def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False, burst=False, hdmi_device = '/dev/video2', output_directory='/home/kh790/data/calibration_imgs/cam_calib'):
     '''
     Move the robot, capture full-res still images OR 1080p HDMI video for camera calibration.
     Robot/wrist/camera poses are not recorded for this.
@@ -60,29 +64,35 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
     args = k_util.parseConnectionArguments()
     with k_util.DeviceConnection.createTcpConnection(args) as router:
         IF = Kinova3(router)
+        IF.set_speed_limit(joint_speeds=[20,20,20,20,20,20])
         success = True
 
         # double check that the robot starts out in its safe resting position
         actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-        rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
-        success &= IF.execute_action(rest_action)
+        # rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
+        # success &= IF.execute_action(rest_action)
 
         # TODO: Improve the motion sequence. Look also at Waypoints to achieve a smooth motion.
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/DSLR_example_path.json")
-        for i,state in enumerate(action_list[:4]):
-            IF.execute_action(state) # the first 4 poses in this specific movement sequence are just for the robot to reach the actual starting position
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_20.json")
+        for i,state in enumerate(action_list[:1]):
+            IF.execute_action(state) # reach the starting position
 
         # Start recording once the robot reaches the starting state
         if use_hdmi_stream:
             # EITHER start recording HDMI output stream to a file
             rec.start_recording(os.path.join(im_dir,'camera_calibration_feed.mp4'))
-        else:
+        elif burst:
             # OR start capturing a burst (=rapid series) of full-resolution still images
+            cam.trigger_AF(duration=1)
             active_burst = cam.start_burst(speed=0)
 
         # Execute the rest of the movement sequence
-        for i,state in enumerate(action_list[4:]):
+        for i,state in enumerate(action_list[1:-2]):
             IF.execute_action(state)
+            if not (use_hdmi_stream or burst):
+                # If capturing still images, not a burst or HDMI stream, capture an image at each pose
+                time.sleep(1) # wait for the arm to settle
+                path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
         # Finally, stop the recording/capture
         if use_hdmi_stream:           
@@ -94,6 +104,10 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
                 # Now files need to be downloaded from the camera storage to the PC, which might take a while
                 # Files are named in ascending alpha-numeric order, so they can be sorted by name
                 cam.download_file(path, target_file=os.path.join(im_dir,path.split('/')[-1]))
+
+        # Return to the resting position
+        IF.execute_action(action_list[-2])
+        IF.execute_action(action_list[-1])
     return im_dir
 
 def video_to_frames():
@@ -116,7 +130,7 @@ def calibrate(calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibrat
 if __name__ == "__main__":
 
     # First, run the data recording routine. Please be careful, this is a potentially dangerous operation. Be aware of your surroundings. The robot has no collision detection or obstacle awareness in this mode.
-    im_dir = record_data(use_hdmi_stream=True)
+    im_dir = record_data(use_hdmi_stream=False, burst=False)
 
     # Then use the recorded data to calibrate the camera (or optionally use a different set of images and skip the recording routine)
     # Specify a target file, where the calibration parameters will be saved
