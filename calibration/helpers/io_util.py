@@ -3,6 +3,10 @@ import yaml
 
 
 def save_to_yaml(out_file, cam_name, frame_size, matrix, distortion):
+
+    '''
+    Save camera instrinsics to a yaml file. 
+    '''
     
     assert matrix.shape == (3, 3)
     data = {
@@ -25,6 +29,9 @@ def save_to_yaml(out_file, cam_name, frame_size, matrix, distortion):
     return
 
 def load_from_yaml(in_file):
+    '''
+    Load camera instrinsics from a yaml file.
+    '''
     with open(in_file, 'r') as f:
         calib = yaml.safe_load(f)
     name = calib['camera_name']
@@ -32,6 +39,22 @@ def load_from_yaml(in_file):
     distortion = np.asarray(calib['distortion_coefficients']['data'])
     frame_size = (calib['image_width'], calib['image_height'])
     return name, frame_size, matrix, distortion
+
+def transform_to_yaml(out_file, data):
+    '''
+    Save a transformation matrix to a yaml file.
+    '''
+    assert data.shape == (4, 4)
+    yaml.dump(data.tolist(), open(out_file, 'w'), sort_keys=False)
+    return
+
+def transform_from_yaml(in_file):
+    '''
+    Load a transformation matrix from a yaml file.
+    '''
+    with open(in_file, 'r') as f:
+        data = yaml.safe_load(f)
+    return np.asarray(data)
 
 if __name__ == "__main__":
     # Test load_from_yaml

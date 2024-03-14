@@ -210,8 +210,8 @@ def coordinate(cam_coords, wrist_coords):
 
     return R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam
 
-def save_coordination(R,t, stamp=''):
-     # save the transformation to a yaml file
+def save_coordination(R,t,Rw=None,tw=None,stamp=''):
+     # save the camera transformation (camera pose expressed in wrist frame) to a yaml file
     config_path = str(pathlib.Path(__file__).parent.resolve()) + f'/config/frame_transform_{stamp}.yaml'
     
     # convert to Euler angles
@@ -227,12 +227,22 @@ def save_coordination(R,t, stamp=''):
     'theta_z': float(euler_rad[2])
     }
     yaml.dump(data, open(config_path, 'w'), default_flow_style=False)
+
+    if Rw is not None and tw is not None:
+        # If given, also save the world to base (robot base pose expressed in pattern origin frame) transform 
+        pattern_path = str(pathlib.Path(__file__).parent.resolve()) + f'/config/pattern2base_transform_{stamp}.yaml'
+        M = np.zeros((4,4))
+        M[:3,:3] = Rw
+        M[:3,3] = tw.flatten()
+        M[3,3] = 1
+        calibration_io.transform_to_yaml(pattern_path, M)
     return
 
 if __name__ == "__main__":
 
     # First run the recording routine
-    data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=2)
+    #data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=2)
+    data_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-53-26'
 
     # if the camera intrinsics are already calibrated, you can read those parameters from the most recent calibration file (default)
     # alternatively calibrate intrinsics at the same time as the extrinsics
@@ -247,4 +257,4 @@ if __name__ == "__main__":
     # finally, perform calibration
     R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = coordinate(cam_in_world, wrist_in_robot)
     # and save the relevant robot chain transform to file
-    save_coordination(R_cam2wrist, t_cam2wrist, stamp=data_dir.split('/')[-1])
+    save_coordination(R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, stamp=data_dir.split('/')[-1])
