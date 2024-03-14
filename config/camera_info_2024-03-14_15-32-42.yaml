@@ -1,0 +1,26 @@
+image_width: 8192
+image_height: 5464
+camera_name: mounted_camera
+camera_matrix:
+  rows: 3
+  cols: 3
+  data:
+  - 15604.304066692883
+  - 0.0
+  - 4329.019841658291
+  - 0.0
+  - 15624.924949087708
+  - 2998.961416740826
+  - 0.0
+  - 0.0
+  - 1.0
+distortion_model: OPENCV
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data:
+  - -0.06986743885660449
+  - -4.052691746674432
+  - 0.0030820165587775793
+  - 0.0032906310191872304
+  - 23.980257415439578
