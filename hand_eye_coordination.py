@@ -66,7 +66,7 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
     # Create connection to the robot
     args = k_util.parseConnectionArguments()
     with k_util.DeviceConnection.createTcpConnection(args) as router:
-        IF = Kinova3(router)
+        IF = Kinova3(router, use_wrist_frame=True) # report the wrist frame for the robot poses, this is important for the calibration
         success = True
 
         # double check that the robot starts out in its safe resting position
@@ -74,32 +74,34 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
         success &= IF.execute_action(rest_action)
 
-
-        # TODO: Improve the motion sequence, maybe add more states
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/hand_eye_sequence.json")
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_20.json")
 
         # Start recording
         if use_hdmi_stream:
             rec.start_recording(os.path.join(im_dir,'hand_eye_calibration.mp4'))
 
         poses = []
-        for i,state in enumerate(action_list):
+        IF.execute_action(action_list[0]) # reach the starting position
+        for i,state in enumerate(action_list[1:-2]):
             IF.execute_action(state)
             time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
             wrist_pose = IF.get_pose()
             poses.append(wrist_pose)
             if not use_hdmi_stream:
-                path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
+                path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
         # Finally, stop the recording/capture
         if use_hdmi_stream:           
             rec.stop_recording() # stop the recording
 
+        IF.execute_action(action_list[-2]) 
+        IF.execute_action(action_list[-1]) # back to the resting position
+
     pose_data = [pose.tolist() for pose in poses]
     json.dump(pose_data, open(os.path.join(im_dir, 'hand_eye_wrist_poses.json'), 'w'))
     return im_dir
 
-def get_camera_poses(im_dir, calibrate_camera=False, cam_calib_file=None):
+def get_camera_poses(im_dir, calibrate_camera=False):
     '''
     Retrieve camera poses from the images taken during the hand-eye calibration routine.
     This is done via AprilTag detection and OpenCV camera calibration.
@@ -109,19 +111,24 @@ def get_camera_poses(im_dir, calibrate_camera=False, cam_calib_file=None):
     '''
 
     cc = CamCalibration('mounted_camera', im_dir)
-    if not calibrate_camera and os.path.exists(cam_calib_file):
-        # load the intrinsic camera parameters from a file
-        cam_name, frame_size, matrix, distortion = calibration_io.load_from_yaml(cam_calib_file)
-        # then evaluate the images and get the extrinsics, using the loaded intrinsics
-        __, __, __, cam_in_world,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
-    else:
-        # alternatively calibrate both intrinsics and extrinsics from the images
-        frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
-        if calibrate_camera:
-            # save the intrinsic camera parameters to a file
-            if cam_calib_file is None:
-                cam_calib_file = os.path.join(im_dir, 'camera_info.yaml')
-            calibration_io.save_to_yaml(cam_calib_file, cc.name, frame_size, matrix, distortion)
+
+    if not calibrate_camera:
+        # find the most recent camera calibration file and load the intrinsic camera parameters
+        config_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config'
+        most_recent_calib = sorted([entry for entry in os.listdir(config_dir) if 'camera_info' in entry])[-1]
+        cam_calib_file = os.path.join(config_dir, most_recent_calib) # get the most recent camera calibration file path
+        if os.path.exists(cam_calib_file):
+            # load the intrinsic camera parameters from a file
+            cam_name, frame_size, matrix, distortion = calibration_io.load_from_yaml(cam_calib_file)
+            # then evaluate the images and get the extrinsics, using the loaded intrinsics
+            __, __, __, cam_in_world,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
+            return cam_in_world, used
+        
+    # alternatively calibrate both intrinsics and extrinsics from the image set
+    frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
+    stamp = im_dir.split('/')[-1]
+    cam_calib_file = str(pathlib.Path(__file__).parent.resolve()) + f'/config/camera_info_{stamp}.yaml'
+    calibration_io.save_to_yaml(cam_calib_file, cc.name, frame_size, matrix, distortion)
     return cam_in_world, used
 
 def get_wrists_poses(directory):
@@ -141,7 +148,7 @@ def coordinate(cam_coords, wrist_coords):
     R_wrist2cam, t_wrist2cam: transforms a point given in the wrist frame to the camera frame, should be the inverse of R_cam2wrist, t_cam2wrist transform
     '''
 
-    # Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z]
+    # Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z] in meters and degrees
     # We convert them to 4x4 homogeneous transformation matrices
     wrist_R = []
     wrist_t = []
@@ -184,27 +191,37 @@ def coordinate(cam_coords, wrist_coords):
     cam_t = pattern_in_cam[:,:3,3]
 
     # Method 1: Only returns camera<>wrist transform
-    R_cam2wrist, t_cam2wrist = cv2.calibrateHandEye(wrist_R, wrist_t, cam_R, cam_t)# method=cv2.CALIB_HAND_EYE_PARK)
+    # R_cam2wrist, t_cam2wrist = cv2.calibrateHandEye(wrist_R, wrist_t, cam_R, cam_t)# method=cv2.CALIB_HAND_EYE_PARK)
     # there are also different method implementations available, see (HandEyeCalibrationMethod)
     # output is the camera pose relative to the wrist pose, so the transformation from the wrist to the camera
 
     # Method 2: Returns both camera<>wrist and base<>pattern transform to anker both in a common world frame
+    # From initial tests, this method seems to yield more accurate results
     R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t)
+
+    M_cam2wrist_transform = np.zeros((4,4))
+    M_cam2wrist_transform[:3,:3] = R_wrist2cam
+    M_cam2wrist_transform[:3,3] = t_wrist2cam.flatten()
+    M_cam2wrist_transform[3,3] = 1
+    M_wrist2cam_transform = np.linalg.inv(M_cam2wrist_transform) # the transform from the camera to the wrist, or the pose of the camera expressed in the wrist frame
+
+    R_cam2wrist = M_wrist2cam_transform[:3,:3] # the rotation from the camera to the wrist, or the rotation of the camera expressed in the wrist frame
+    t_cam2wrist = M_wrist2cam_transform[:3,3] # the translation from the camera to the wrist, or the translation of the camera expressed in the wrist frame
 
     return R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam
 
-def save_coordination(R,t):
+def save_coordination(R,t, stamp=''):
      # save the transformation to a yaml file
-    config_path = str(pathlib.Path(__file__).parent.resolve()) + '/config/frame_transform.yaml'
+    config_path = str(pathlib.Path(__file__).parent.resolve()) + f'/config/frame_transform_{stamp}.yaml'
     
     # convert to Euler angles
     euler = conv.mat_to_euler(R)
     euler_rad = np.deg2rad(euler)
 
-    data = {'frame_id': '',
-    'x_translation': float(t[0][0]),
-    'y_translation': float(t[1][0]),
-    'z_translation': float(t[2][0]),
+    data = {'frame_id': 'cam_frame',
+    'x_translation': float(t[0]),
+    'y_translation': float(t[1]),
+    'z_translation': float(t[2]),
     'theta_x': float(euler_rad[0]),
     'theta_y': float(euler_rad[1]),
     'theta_z': float(euler_rad[2])
@@ -214,14 +231,11 @@ def save_coordination(R,t):
 
 if __name__ == "__main__":
 
-
     # First run the recording routine
-    data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/eye_in_hand', sleep_time=2)
+    data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=2)
 
-    # if the camera intrinsics are already calibrated, use those parameters
-    config_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config'
-    cam_calib_file = os.path.join(config_dir, sorted(os.listdir(config_dir))[0])
-    cam_in_world, used = get_camera_poses(data_dir, calibrate_camera=False, cam_calib_file=cam_calib_file)
+    # if the camera intrinsics are already calibrated, you can read those parameters from a file instead of recalibrating
+    cam_in_world, used = get_camera_poses(data_dir, calibrate_camera=False)
 
     # Find the wrist poses that correspond to the images which were successfully used for calibration
     all_imgs = [f for f in os.listdir(data_dir) if f.endswith('.JPG')]
@@ -232,4 +246,4 @@ if __name__ == "__main__":
     # finally, perform calibration
     R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = coordinate(cam_in_world, wrist_in_robot)
     # and save the relevant robot chain transform to file
-    save_coordination(R_cam2wrist, t_cam2wrist)
+    save_coordination(R_cam2wrist, t_cam2wrist, stamp=data_dir.split('/')[-1])

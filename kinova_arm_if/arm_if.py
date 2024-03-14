@@ -20,12 +20,12 @@ except ImportError:
     import helpers.data_io as data_io
 
 class Kinova3:
-    def __init__(self, router, transform_path=None):
+    def __init__(self, router, transform_path=None, use_wrist_frame=False):
         
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
-        if transform_path is None:
-            transform_path = str(pathlib.Path(__file__).parent.parent.resolve()) + '/config/frame_transform.yaml'
-        if os.path.exists(transform_path):
+        if use_wrist_frame:
+            self.camera_frame_transform = [0, 0, 0, 0, 0, 0]
+        elif os.path.exists(transform_path):
             data = yaml.safe_load(open(transform_path))
             self.camera_frame_transform = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
             self.camera_frame_transform[3:] = np.rad2deg(self.camera_frame_transform[3:])

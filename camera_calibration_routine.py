@@ -7,6 +7,7 @@ import os
 import pathlib
 import datetime
 import time
+import cv2
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
@@ -116,7 +117,6 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
     return im_dir
 
 def video_to_frames(vid_dir=None, sampling_rate=10):
-    import cv2
     vidcap = cv2.VideoCapture(os.path.join(vid_dir, 'camera_calibration_feed.mp4'))
     success,image = vidcap.read()
     count = 0
@@ -128,8 +128,6 @@ def video_to_frames(vid_dir=None, sampling_rate=10):
         else:
             success,image = vidcap.read() # toss the frame
         count += 1
-
-    # TODO: Convert into single frames/images
     return
 
 def calibrate(calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibration_imgs/cam_calib', save=True):
@@ -156,5 +154,7 @@ if __name__ == "__main__":
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") # use the current date and time as a unique identifier, prevents overwriting previous calibrations
     target_file = calibr_dir + f'/camera_info_{stamp}.yaml'
     # Optionally specify a different image input directory
-    #im_dir = '/home/karo/ws/data/calibration_images/cam_calib_test/' # you can also specify a different directory here
+    # im_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-07-40' # you can also specify a different directory here
     __, matrix, distortion, __, __ = calibrate(calib_file=target_file, im_dir=im_dir)
+
+    # TODO make the calibration file carry the same stamp as the image directory

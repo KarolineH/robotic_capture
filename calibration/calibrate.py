@@ -55,10 +55,12 @@ class CamCalibration:
 
             if len(results) > 3: # OPENCV requires at least 4 detected location in an image for camera calibration
                 detected_ids = np.asarray([r.tag_id for r in results])
+                valid_detected_ids = detected_ids[np.where(detected_ids <=corner_array.shape[0])] # only use detected tags that are part of the pattern
                 image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)
-                world_coords = corner_array[detected_ids]
+                valid_image_coords = image_coords[np.where(detected_ids <=corner_array.shape[0])]
+                world_coords = corner_array[valid_detected_ids]
                 obj_points.append(world_coords)
-                img_points.append(image_coords)
+                img_points.append(valid_image_coords)
                 used_images.append(image)
 
             if resolution is None:
