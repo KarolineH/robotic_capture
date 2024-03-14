@@ -25,15 +25,19 @@ class Kinova3:
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
         if use_wrist_frame:
             self.camera_frame_transform = [0, 0, 0, 0, 0, 0]
-        elif os.path.exists(transform_path):
-            data = yaml.safe_load(open(transform_path))
-            self.camera_frame_transform = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
-            self.camera_frame_transform[3:] = np.rad2deg(self.camera_frame_transform[3:])
         else:
-            self.camera_frame_transform = [0, -0.045, 0.085, -90, 0, 0] # if not available, use this estimate
+            if transform_path is None:
+                # Find the most recently calibrated transform file:
+                config_dir = str(pathlib.Path(__file__).parent.parent.absolute()) + '/config'
+                transform_path = os.path.join(config_dir, sorted([entry for entry in os.listdir(config_dir) if 'frame_transform' in entry])[-1])
+            if os.path.exists(transform_path):
+                data = yaml.safe_load(open(transform_path))
+                self.camera_frame_transform = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
+                self.camera_frame_transform[3:] = np.rad2deg(self.camera_frame_transform[3:])
+            else:
+                self.camera_frame_transform = [0, -0.045, 0.085, -90, 0, 0] # if not available, use this estimate
         self.camera_weight = 2 #kg, this is an estimate
         self.camera_center_of_mass = np.array([0, 0, 0.083]) #meters, this is an estimate
-
         self.base = BaseClient(router)
         self.base_cyclic = BaseCyclicClient(router)
         self.control_config = ControlConfigClient(router)
