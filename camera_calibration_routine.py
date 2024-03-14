@@ -29,13 +29,15 @@ If using the HDMI feed, the camera should be connected using both the USB and HD
 The robot should be in a safe resting position at the beginning. Please check that the movement routine is safe before running.
 '''
 
-def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False, burst=False, hdmi_device = '/dev/video2', output_directory='/home/kh790/data/calibration_imgs/cam_calib'):
+def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False, burst=False, hdmi_device = '/dev/video2', sleep_time=2, output_directory='/home/kh790/data/calibration_imgs/cam_calib'):
     '''
     Move the robot, capture full-res still images OR 1080p HDMI video for camera calibration.
     Robot/wrist/camera poses are not recorded for this.
     Input parameters:
     capture_params: list of camera capture parameters, these are by default set to minimise Bokeh effects (small aperture) and to facilitate better focus on the calibration pattern.
     use_hdmi_stream: if True, the HDMI video stream is recorded, If False, a burst of full-resolution still images is captured.
+    burst: if True, a burst of full-resolution still images is captured continuously during the movement sequence, if False single stills are captured when each defined state in the sequence is reached.
+    sleep_time: the time in seconds to wait after each robot movement before capturing an image, to allow the arm to settle.
     hdmi_device: the device name of the HDMI capture device, by default this is set to /dev/video2 (not needed if use_hdmi_stream is False)
     output_directory: the directory where the images or video will be saved. A sub-directory will be created at the location for each run.
     Returns the directory where the images or video are saved.
@@ -69,12 +71,11 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
 
         # double check that the robot starts out in its safe resting position
         actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-        # rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
-        # success &= IF.execute_action(rest_action)
+        rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
+        success &= IF.execute_action(rest_action)
 
-        # TODO: Improve the motion sequence. Look also at Waypoints to achieve a smooth motion.
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_20.json")
-        for i,state in enumerate(action_list[:1]):
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_20.json") # this sequence has 23 states, the first and last two are for reaching the starting and resting positions only
+        for i,state in enumerate(action_list[:2]):
             IF.execute_action(state) # reach the starting position
 
         # Start recording once the robot reaches the starting state
@@ -85,19 +86,23 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
             # OR start capturing a burst (=rapid series) of full-resolution still images
             cam.trigger_AF(duration=1)
             active_burst = cam.start_burst(speed=0)
+        else:
+            # Capture the first still
+            time.sleep(sleep_time) # wait for the arm to settle
+            file_path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
         # Execute the rest of the movement sequence
-        for i,state in enumerate(action_list[1:-2]):
+        for i,state in enumerate(action_list[2:-2]):
             IF.execute_action(state)
             if not (use_hdmi_stream or burst):
                 # If capturing still images, not a burst or HDMI stream, capture an image at each pose
-                time.sleep(1) # wait for the arm to settle
-                path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
+                time.sleep(sleep_time) # wait for the arm to settle
+                file_path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
-        # Finally, stop the recording/capture
+        # Finally, stop the recording/capture if needed
         if use_hdmi_stream:           
             rec.stop_recording() # stop the recording
-            video_to_frames() # convert mp4 video file into series of images
+            video_to_frames(im_dir) # convert mp4 video file into series of images
         else:
             sucess, files, msg =cam.stop_burst() # stop the capture
             for path in files:
@@ -110,7 +115,20 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         IF.execute_action(action_list[-1])
     return im_dir
 
-def video_to_frames():
+def video_to_frames(vid_dir=None, sampling_rate=10):
+    import cv2
+    vidcap = cv2.VideoCapture(os.path.join(vid_dir, 'camera_calibration_feed.mp4'))
+    success,image = vidcap.read()
+    count = 0
+    while success:
+        if count % sampling_rate == 0:
+            cv2.imwrite(os.path.join(vid_dir,f"frame{count}.jpg"), image)     # save frame as JPEG file      
+            success,image = vidcap.read()
+            print('Read a new frame: ', success)
+        else:
+            success,image = vidcap.read() # toss the frame
+        count += 1
+
     # TODO: Convert into single frames/images
     return
 
@@ -130,7 +148,7 @@ def calibrate(calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibrat
 if __name__ == "__main__":
 
     # First, run the data recording routine. Please be careful, this is a potentially dangerous operation. Be aware of your surroundings. The robot has no collision detection or obstacle awareness in this mode.
-    im_dir = record_data(use_hdmi_stream=False, burst=False)
+    #im_dir = record_data(use_hdmi_stream=True, burst=False, hdmi_device='/dev/video0')
 
     # Then use the recorded data to calibrate the camera (or optionally use a different set of images and skip the recording routine)
     # Specify a target file, where the calibration parameters will be saved
