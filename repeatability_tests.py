@@ -5,10 +5,12 @@ import numpy as np
 import time
 import pathlib
 import json
+import datetime
+import os
 
-# import kinova_arm_if.helpers.kortex_util as k_util
-# import kinova_arm_if.helpers.data_io as data_io
-# from kinova_arm_if.arm_if import Kinova3
+import kinova_arm_if.helpers.kortex_util as k_util
+import kinova_arm_if.helpers.data_io as data_io
+from kinova_arm_if.arm_if import Kinova3
 from calibration.calibrate import CamCalibration
 from calibration.helpers import io_util as calibration_io
 from eos_camera_if.cam_io import EOS
@@ -17,9 +19,11 @@ def set_vs_measured_states():
     test_speed_limits = [10,20,30,40]
     num_measurements = 40
     sleep_time = 3
-    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states'
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    im_dir = f'/home/kh790/data/test_measurements/set_vs_measured_states/{stamp}'
+    os.mkdir(im_dir)
     actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-    sequence, action_list = data_io.read_action_from_file(actions_dir + '/scan_path.json')
+    sequence, action_list = data_io.read_action_from_file(actions_dir + '/calibration_sequence_20.json')
 
     capture_params=[32,'AUTO','AUTO',True]
     cam = EOS()
@@ -67,7 +71,7 @@ def set_vs_measured_states():
                 time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
                 cam_pose = IF.get_pose()
                 poses_by_speed.append(cam_pose)
-                path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
+                path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
             errors_overall.append(errors_by_speed)
             timesteps_overall.append(timesteps_by_speed)
@@ -76,12 +80,12 @@ def set_vs_measured_states():
         errors = np.asarray(errors_overall) # shape [speeds,states,measurements,joints]
         timesteps = np.asarray(timesteps_overall) # shape [speeds,states,measurements,joints]
 
-        #TODO save the poses to a file
-
-        with open('/home/kh790/data/test_measurements/set_vs_measured_states/states_errors.npy', 'wb') as f:
+        with open(os.path.join(im_dir, 'states_errors.npy'), 'wb') as f:
             np.save(f, errors)
-        with open('/home/kh790/data/test_measurements/set_vs_measured_states/states_timesteps.npy', 'wb') as f:
+        with open(os.path.join(im_dir, 'states_timesteps.npy'), 'wb') as f:
             np.save(f, timesteps)
+        poses_unravelled = [pose.tolist() for entry in poses_overall for pose in entry]
+        json.dump(poses_unravelled, open(os.path.join(im_dir, 'hand_eye_wrist_poses.json'), 'w'))
     return
 
 def anaylse():
@@ -135,5 +139,5 @@ def pose_vs_apriltag():
 
 if __name__ == "__main__":
     #pose_vs_apriltag()
-    #set_vs_measured_states()
+    set_vs_measured_states()
     anaylse()
