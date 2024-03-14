@@ -146,15 +146,12 @@ def calibrate(calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibrat
 if __name__ == "__main__":
 
     # First, run the data recording routine. Please be careful, this is a potentially dangerous operation. Be aware of your surroundings. The robot has no collision detection or obstacle awareness in this mode.
-    #im_dir = record_data(use_hdmi_stream=True, burst=False, hdmi_device='/dev/video0')
+    im_dir = record_data(use_hdmi_stream=False, burst=False)
 
     # Then use the recorded data to calibrate the camera (or optionally use a different set of images and skip the recording routine)
     # Specify a target file, where the calibration parameters will be saved
+    # By default this is named by the timestamp assigned to the image directory, optionally specify a different location here
+    stamp = im_dir.split('/')[-1]
     calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config' # default location is the config directory of this package
-    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") # use the current date and time as a unique identifier, prevents overwriting previous calibrations
     target_file = calibr_dir + f'/camera_info_{stamp}.yaml'
-    # Optionally specify a different image input directory
-    # im_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-07-40' # you can also specify a different directory here
     __, matrix, distortion, __, __ = calibrate(calib_file=target_file, im_dir=im_dir)
-
-    # TODO make the calibration file carry the same stamp as the image directory

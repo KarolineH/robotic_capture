@@ -234,7 +234,8 @@ if __name__ == "__main__":
     # First run the recording routine
     data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=2)
 
-    # if the camera intrinsics are already calibrated, you can read those parameters from a file instead of recalibrating
+    # if the camera intrinsics are already calibrated, you can read those parameters from the most recent calibration file (default)
+    # alternatively calibrate intrinsics at the same time as the extrinsics
     cam_in_world, used = get_camera_poses(data_dir, calibrate_camera=False)
 
     # Find the wrist poses that correspond to the images which were successfully used for calibration
