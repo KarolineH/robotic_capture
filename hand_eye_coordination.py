@@ -74,7 +74,7 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
         success &= IF.execute_action(rest_action)
 
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_20.json")
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_44.json")
 
         # Start recording
         if use_hdmi_stream:
@@ -82,7 +82,7 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
 
         poses = []
         IF.execute_action(action_list[0]) # reach the starting position
-        for i,state in enumerate(action_list[1:-2]):
+        for i,state in enumerate(action_list[1:-1]):
             IF.execute_action(state)
             time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
             wrist_pose = IF.get_pose()
@@ -94,7 +94,6 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         if use_hdmi_stream:           
             rec.stop_recording() # stop the recording
 
-        IF.execute_action(action_list[-2]) 
         IF.execute_action(action_list[-1]) # back to the resting position
 
     pose_data = [pose.tolist() for pose in poses]
@@ -241,12 +240,13 @@ def save_coordination(R,t,Rw=None,tw=None,stamp=''):
 if __name__ == "__main__":
 
     # First run the recording routine
-    #data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=2)
-    data_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-53-26'
+    data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=6)
+    #data_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-53-26'
 
     # if the camera intrinsics are already calibrated, you can read those parameters from the most recent calibration file (default)
     # alternatively calibrate intrinsics at the same time as the extrinsics
     cam_in_world, used = get_camera_poses(data_dir, calibrate_camera=False)
+    print(f"{len(used)} images were useable for calibration")
 
     # Find the wrist poses that correspond to the images which were successfully used for calibration
     all_imgs = [f for f in os.listdir(data_dir) if f.endswith('.JPG')]

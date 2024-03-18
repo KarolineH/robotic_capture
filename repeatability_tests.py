@@ -9,9 +9,9 @@ import datetime
 import os
 import cv2
 
-# import kinova_arm_if.helpers.kortex_util as k_util
-# import kinova_arm_if.helpers.data_io as data_io
-# from kinova_arm_if.arm_if import Kinova3
+import kinova_arm_if.helpers.kortex_util as k_util
+import kinova_arm_if.helpers.data_io as data_io
+from kinova_arm_if.arm_if import Kinova3
 from calibration.calibrate import CamCalibration
 from calibration.helpers import io_util as calibration_io
 from calibration.helpers import transform_util
@@ -26,16 +26,19 @@ def set_vs_measured_states():
     Also takes a full-res image of the AprilTag pattern at each state
     Saves the error in measured joint angles compared to the set joint angles and the measurement's time stamps to file
     Also saves the measured cartesian camera pose to file (in the robot's base frame)
+
+    This recording routine can take around 30 minutes to complete, depending on the number of states, waiting times, and range of tested speeds.
+    Works best when continuous autofocus is enabled and the auto focus mode is set to face tracking.
     '''
     test_speed_limits = [10,20,30,40]
     num_measurements = 40
-    sleep_time = 3
+    sleep_time = 5 # seconds
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     im_dir = f'/home/kh790/data/test_measurements/set_vs_measured_states/{stamp}'
     os.mkdir(im_dir)
     actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-    sequence, action_list = data_io.read_action_from_file(actions_dir + '/calibration_sequence_20.json')
-    skip_photos_at = [0,21,22]
+    sequence, action_list = data_io.read_action_from_file(actions_dir + '/calibration_sequence_44.json')
+    skip_photos_at = [0,45] # first and last pose
 
     capture_params=[32,'AUTO','AUTO',True]
     cam = EOS()
@@ -100,6 +103,7 @@ def set_vs_measured_states():
             np.save(f, timesteps)
         poses_unravelled = [pose.tolist() for entry in poses_overall for pose in entry]
         json.dump(poses_unravelled, open(os.path.join(im_dir, 'measured_cam_poses.json'), 'w'))
+        IF.reset_speed_limit()
     return im_dir
 
 def anaylse_joint_errors(im_dir):
@@ -136,11 +140,18 @@ def anaylse_joint_errors(im_dir):
 
     # Show the plots
     plt.show()
+    # save to png
+    for i in range(num_figures):
+        plt.figure(i + 1)
+        plt.savefig(os.path.join(im_dir, f'joint_errors_speed_{speeds[i]}.png'))
     return
 
 def analyse_pose_errors(im_dir):
+    '''
+    Computation time scales with the number of images, this might take a while.
+    '''
     # read file
-    with open(os.path.join(im_dir, 'hand_eye_wrist_poses.json'), 'r') as f:
+    with open(os.path.join(im_dir, 'measured_cam_poses.json'), 'r') as f:
         poses = np.asarray(json.load(f))
     if len([item for item in os.listdir(im_dir) if '.JPG' in item]) != poses.shape[0]:
         raise ValueError('Number of images and number of poses do not match')
@@ -179,7 +190,6 @@ def analyse_pose_errors(im_dir):
     cam_poses_from_robot = t @ cam_in_base_mat # poses of the camera, given in the pattern frame, as derived from the robot's proprioception measurements
     cam_poses_from_images = cam_in_pattern # poses of the camera, given in the pattern frame, as derived from the AprilTag locations in the images
 
-    from calibration.helpers import plotting
     plotting.plot_transforms(cam_poses_from_images)
     plotting.plot_transforms(cam_poses_from_robot)
 
@@ -191,25 +201,65 @@ def analyse_pose_errors(im_dir):
     # methods from https://stackoverflow.com/questions/6522108/error-between-two-rotations
     # and https://math.stackexchange.com/questions/2113634/comparing-two-rotation-matrices
 
-    # TODO: plot
+    # save results
+    tl_err = diff[:,:3,3]
+    with open(os.path.join(im_dir, 'translation_errors.npy'), 'wb') as f:
+        np.save(f, diff[:,:3,3])
+    with open(os.path.join(im_dir, 'rotation_errors.npy'), 'wb') as f:
+        np.save(f, rot_err2)
+    plot_pose_errors(tl_err, rot_err2)
+    return
+
+def plot_pose_errors(tl_err, rot_err):
+    max_err = np.ceil(np.max(np.max(abs(tl_err), axis=0))*1000)/1000
+
     fig = plt.figure()
     ax1 = fig.add_subplot(2,2,1)
-    x_errors = plt.hist(diff[:,0,3], bins=20)
+    x_errors = plt.hist(tl_err[:,0], bins=20)
+    plt.xlabel('Error [m]')
     plt.title('X errors')
+    plt.xlim(-max_err,max_err)
+
     ax2 = fig.add_subplot(2,2,2)
-    y_errors = plt.hist(diff[:,1,3], bins=20)
+    y_errors = plt.hist(tl_err[:,1], bins=20)
+    plt.xlabel('Error [m]')
     plt.title('Y errors')
+    plt.xlim(-max_err,max_err)
+
     ax3 = fig.add_subplot(2,2,3)
-    z_errors = plt.hist(diff[:,2,3], bins=20)
+    z_errors = plt.hist(tl_err[:,2], bins=20)
+    plt.xlabel('Error [m]')
     plt.title('Z errors')
+    plt.xlim(-max_err,max_err)
+
     ax4 = fig.add_subplot(2,2,4)
-    plt.hist(rot_err2, bins=20)
+    plt.hist(rot_err, bins=20)
+    plt.xlabel('Error [°]')
     plt.title('Rotation errors')
+
+    print(f'Max errors: {np.max(abs(tl_err[:,0]))} meters in x, {np.max(abs(tl_err[:,1]))} meters in y, {np.max(abs(tl_err[:,2]))} meters in z, and {np.max(rot_err)} degrees in rotation')
+    print(f'Mean errors: {np.mean(abs(tl_err[:,0]))} meters in x, {np.mean(abs(tl_err[:,1]))} meters in y, {np.mean(abs(tl_err[:,2]))} meters in z, and {np.mean(rot_err)} degrees in rotation')
+
     plt.show()
+    return
+
+def plot_errors_from_files(im_dir):
+    with open(os.path.join(im_dir, 'translation_errors.npy'), 'rb') as f:
+        tl_err = np.load(f)
+    with open(os.path.join(im_dir, 'rotation_errors.npy'), 'rb') as f:
+        rot_err = np.load(f)
+    plot_pose_errors(tl_err, rot_err)
+
+    # and again split by speed
+    speeds = [10,20,30,40]
+    set_length = int(tl_err.shape[0]/len(speeds))
+    for i,speed in enumerate(speeds):
+        plot_pose_errors(tl_err[i*set_length:(i+1)*set_length], rot_err[i*set_length:(i+1)*set_length])
     return
 
 if __name__ == "__main__":
     #im_dir = set_vs_measured_states()
-    im_dir = '/home/karo/ws/data/calibration_images/repeat_test'
-    #anaylse_joint_errors(im_dir)
-    analyse_pose_errors(im_dir)
+    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+    anaylse_joint_errors(im_dir)
+    #analyse_pose_errors(im_dir)
+    #plot_errors_from_files(im_dir)
