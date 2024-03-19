@@ -22,6 +22,10 @@ def plot_transforms(transforms):
     return
 
 def plot_axes_on_img(img_file, cam_mtx, dist_coeff, rotation, translation):
+    '''
+    This function plots the axes of the AprilTag pattern origin (the first tag's corner) onto the image. This is useful for debugging.
+    Inputs: an image file, camera matrix, distortion coefficients, rotation and translation vectors of the pattern origin given in the camera frame.
+    '''
     
     img = cv2.imread(img_file) # row, column
     im2 = cv2.drawFrameAxes(img, cam_mtx, dist_coeff, rotation, translation, 0.1, 6)

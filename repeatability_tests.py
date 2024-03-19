@@ -13,8 +13,7 @@ import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
 from kinova_arm_if.arm_if import Kinova3
 from calibration.calibrate import CamCalibration
-from calibration.helpers import io_util as calibration_io
-from calibration.helpers import transform_util
+from calibration.helpers import calibration_io as calibration_io
 from eos_camera_if.cam_io import EOS
 from kinova_arm_if.helpers import conversion
 from calibration.helpers import plotting
@@ -33,13 +32,18 @@ def set_vs_measured_states():
     test_speed_limits = [10,20,30,40]
     num_measurements = 40
     sleep_time = 5 # seconds
+
+    # create new directory for the images and measurements
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     im_dir = f'/home/kh790/data/test_measurements/set_vs_measured_states/{stamp}'
     os.mkdir(im_dir)
+
+    # load the movement sequence
     actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
     sequence, action_list = data_io.read_action_from_file(actions_dir + '/calibration_sequence_44.json')
     skip_photos_at = [0,45] # first and last pose
 
+    # prep the camera
     capture_params=[32,'AUTO','AUTO',True]
     cam = EOS()
     cam.set_capture_parameters(*capture_params)
@@ -146,7 +150,7 @@ def anaylse_joint_errors(im_dir):
         plt.savefig(os.path.join(im_dir, f'joint_errors_speed_{speeds[i]}.png'))
     return
 
-def analyse_pose_errors(im_dir):
+def analyse_pose_errors(im_dir, cam_id):
     '''
     Computation time scales with the number of images, this might take a while.
     '''
@@ -157,15 +161,12 @@ def analyse_pose_errors(im_dir):
         raise ValueError('Number of images and number of poses do not match')
     
     # get the camera poses from the images via AprilTag detection and OpenCV calibration, then compare
-    cc = CamCalibration('mounted_camera', im_dir)
-    # get the most recent camera calibration
-    config_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config'
-    most_recent_calib = sorted([entry for entry in os.listdir(config_dir) if 'camera_info' in entry])[-1]
-    cam_calib_file = os.path.join(config_dir, most_recent_calib) # get the most recent camera calibration file path
-
-    if os.path.exists(cam_calib_file):
+    cc = CamCalibration(cam_id, im_dir)
+    # get the most recent camera calibration file (intrinsics), if available
+    intrinsics_file = calibration_io.fetch_recent_intrinsics_path(cam_id)
+    if intrinsics_file is not None:
         # load the intrinsic camera parameters from a file
-        cam_name, frame_size, matrix, distortion = calibration_io.load_from_yaml(cam_calib_file)
+        cam_name, frame_size, matrix, distortion = calibration_io.load_intrinsics_from_yaml(intrinsics_file)
         # then evaluate the images and get the extrinsics, using the loaded intrinsics
         __, __, __, cam_in_pattern,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
     else:
@@ -173,10 +174,12 @@ def analyse_pose_errors(im_dir):
         frame_size,matrix,distortion,cam_in_pattern,used = cc.april_tag_calibration(lower_requirements=True)
     
     # load the transform from the robot base to the world/pattern frame
-    most_recent_pattern_transform = sorted([entry for entry in os.listdir(config_dir) if 'pattern2base' in entry])[-1]
-    base_transform = os.path.join(config_dir, most_recent_pattern_transform) 
-    if os.path.exists(base_transform):
-        t = calibration_io.transform_from_yaml(base_transform) # the transform from the robot base to the world frame, or the pose of the robot base expressed in the world/pattern frame
+    base_transform_file = calibration_io.fetch_recent_base_transform_path()
+    if base_transform_file is None:
+        print('No transform between world/pattern and robot base frame available, make sure the eye-in-hand calibration is up to date.')
+        return
+    
+    t = calibration_io.load_transform_from_yaml(base_transform_file) # the transform from the robot base to the world frame, or the pose of the robot base expressed in the world/pattern frame
     
     all_imgs = sorted([f for f in os.listdir(im_dir) if f.endswith('.JPG')])
     indices = np.asarray([np.where(np.array(all_imgs)==name) for name in used]).flatten()
@@ -197,7 +200,7 @@ def analyse_pose_errors(im_dir):
 
     rot_err = np.asarray([np.linalg.norm(cv2.Rodrigues(cam_poses_from_robot[i,:3,:3].dot(cam_poses_from_images[i,:3,:3].T))[0]) for i in range(diff.shape[0])]) # in radians
     rot_err2 = np.asarray([np.rad2deg(np.arccos((np.trace(cam_poses_from_robot[i,:3,:3] @ cam_poses_from_images[i,:3,:3].T) - 1) / 2)) for i in range(diff.shape[0])]) # in degrees
-    # np.testing.assert_almost_equal(np.rad2deg(rot_err), rot_err2) # VERIRY that these are in fact the same
+    # np.testing.assert_almost_equal(np.rad2deg(rot_err), rot_err2) # you can verify that these are in fact the same
     # methods from https://stackoverflow.com/questions/6522108/error-between-two-rotations
     # and https://math.stackexchange.com/questions/2113634/comparing-two-rotation-matrices
 
@@ -257,9 +260,15 @@ def plot_errors_from_files(im_dir):
         plot_pose_errors(tl_err[i*set_length:(i+1)*set_length], rot_err[i*set_length:(i+1)*set_length])
     return
 
-if __name__ == "__main__":
-    #im_dir = set_vs_measured_states()
-    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+
+def main(cam_id='EOS01'):
+    # Take measurements
+    im_dir = set_vs_measured_states()
+    # alternatively specify a previous measurement set
+    # im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
     anaylse_joint_errors(im_dir)
-    #analyse_pose_errors(im_dir)
-    #plot_errors_from_files(im_dir)
+    analyse_pose_errors(im_dir, cam_id)
+    plot_errors_from_files(im_dir)
+
+if __name__ == "__main__":
+    main()

@@ -15,7 +15,7 @@ from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 from eos_camera_if.recording import Recorder
 from calibration.calibrate import CamCalibration
-from calibration.helpers import io_util as calibration_io
+from calibration.helpers import calibration_io as calibration_io
 
 ''' 
 Routine for calibrating the robot-mounted camera (intrinsics).
@@ -130,21 +130,20 @@ def video_to_frames(vid_dir=None, sampling_rate=10):
         count += 1
     return
 
-def calibrate(calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibration_imgs/cam_calib', save=True):
+def calibrate(cam_id, calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibration_imgs/cam_calib', save=True):
     '''
     Perform calibration using the images in im_dir.
     This is done via AprilTag detection and OpenCV camera calibration.
     Assumes the standard AprilTag pattern used in our lab, can be altered if needed, see the calibration module for details.
     '''
 
-    cc = CamCalibration('mounted_camera', im_dir)
+    cc = CamCalibration(cam_id, im_dir)
     frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
     if save:
-        calibration_io.save_to_yaml(calib_file, cc.name, frame_size, matrix, distortion)
+        calibration_io.save_intrinsics_to_yaml(calib_file, cam_id, frame_size, matrix, distortion)
     return frame_size, matrix, distortion, cam_in_world, used
 
-if __name__ == "__main__":
-
+def main(cam_id='EOS01'):
     # First, run the data recording routine. Please be careful, this is a potentially dangerous operation. Be aware of your surroundings. The robot has no collision detection or obstacle awareness in this mode.
     im_dir = record_data(use_hdmi_stream=False, burst=False)
 
@@ -153,5 +152,10 @@ if __name__ == "__main__":
     # By default this is named by the timestamp assigned to the image directory, optionally specify a different location here
     stamp = im_dir.split('/')[-1]
     calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config' # default location is the config directory of this package
-    target_file = calibr_dir + f'/camera_info_{stamp}.yaml'
-    __, matrix, distortion, __, __ = calibrate(calib_file=target_file, im_dir=im_dir)
+    target_file = calibr_dir + f'/camera_info_{cam_id}_{stamp}.yaml'
+
+    # Perform the calibration
+    __, matrix, distortion, __, __ = calibrate(cam_id, calib_file=target_file, im_dir=im_dir)
+
+if __name__ == "__main__":
+    main()

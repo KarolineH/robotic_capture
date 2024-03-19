@@ -16,7 +16,7 @@ from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 from eos_camera_if.recording import Recorder
 from calibration.calibrate import CamCalibration
-from calibration.helpers import io_util as calibration_io
+from calibration.helpers import calibration_io as calibration_io
 
 ''' 
 Routine for calibrating the eye-in-hand coordination, that is the transform between robot arm (wrist) and the mounted camera's principal point.
@@ -100,25 +100,22 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
     json.dump(pose_data, open(os.path.join(im_dir, 'hand_eye_wrist_poses.json'), 'w'))
     return im_dir
 
-def get_camera_poses(im_dir, calibrate_camera=False):
+def get_camera_poses(im_dir, cam_id='EOS01', calibrate_intrinsics=False):
     '''
     Retrieve camera poses from the images taken during the hand-eye calibration routine.
     This is done via AprilTag detection and OpenCV camera calibration.
     Optionally also calibrate the intrinsic camera parameters using the same image collection if not loading intrinsics from a file.
-    If calibrate_camera is set to True, the intrinsic camera parameters are also saved to file.
+    If calibrate_intrinsics is set to True, the intrinsic camera parameters are also saved to file.
     Returns the camera poses in the world frame and the names of the images that were used for calibration. Some images might not have been suitable because AprilTags were not detected.
     '''
 
-    cc = CamCalibration('mounted_camera', im_dir)
+    cc = CamCalibration(cam_id, im_dir)
 
-    if not calibrate_camera:
+    if not calibrate_intrinsics:
         # find the most recent camera calibration file and load the intrinsic camera parameters
-        config_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config'
-        most_recent_calib = sorted([entry for entry in os.listdir(config_dir) if 'camera_info' in entry])[-1]
-        cam_calib_file = os.path.join(config_dir, most_recent_calib) # get the most recent camera calibration file path
-        if os.path.exists(cam_calib_file):
-            # load the intrinsic camera parameters from a file
-            cam_name, frame_size, matrix, distortion = calibration_io.load_from_yaml(cam_calib_file)
+        intrinsics_file = calibration_io.fetch_recent_intrinsics_path(cam_id)
+        if intrinsics_file is not None:
+            cam_name, frame_size, matrix, distortion = calibration_io.load_intrinsics_from_yaml(intrinsics_file)
             # then evaluate the images and get the extrinsics, using the loaded intrinsics
             __, __, __, cam_in_world,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
             return cam_in_world, used
@@ -126,8 +123,8 @@ def get_camera_poses(im_dir, calibrate_camera=False):
     # alternatively calibrate both intrinsics and extrinsics from the image set
     frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
     stamp = im_dir.split('/')[-1]
-    cam_calib_file = str(pathlib.Path(__file__).parent.resolve()) + f'/config/camera_info_{stamp}.yaml'
-    calibration_io.save_to_yaml(cam_calib_file, cc.name, frame_size, matrix, distortion)
+    cam_calib_file = str(pathlib.Path(__file__).parent.resolve()) + f'/config/camera_info_{cam_id}_{stamp}.yaml'
+    calibration_io.save_intrinsics_to_yaml(cam_calib_file, cam_id, frame_size, matrix, distortion)
     return cam_in_world, used
 
 def get_wrists_poses(directory):
@@ -234,19 +231,20 @@ def save_coordination(R,t,Rw=None,tw=None,stamp=''):
         M[:3,:3] = Rw
         M[:3,3] = tw.flatten()
         M[3,3] = 1
-        calibration_io.transform_to_yaml(pattern_path, M)
+        calibration_io.save_transform_to_yaml(pattern_path, M)
     return
 
-if __name__ == "__main__":
 
+def main(cam_id = 'EOS01'):
     # First run the recording routine
     data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=6)
-    #data_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-53-26'
+    # Alternatively select a folder with previously recorded images
+    # data_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-53-26'
 
     # if the camera intrinsics are already calibrated, you can read those parameters from the most recent calibration file (default)
     # alternatively calibrate intrinsics at the same time as the extrinsics
-    cam_in_world, used = get_camera_poses(data_dir, calibrate_camera=False)
-    print(f"{len(used)} images were useable for calibration")
+    cam_in_world, used = get_camera_poses(data_dir, cam_id, calibrate_intrinsics=False)
+    print(f"{len(used)} images were useable for eye-in-hand calibration")
 
     # Find the wrist poses that correspond to the images which were successfully used for calibration
     all_imgs = [f for f in os.listdir(data_dir) if f.endswith('.JPG')]
@@ -258,3 +256,6 @@ if __name__ == "__main__":
     R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = coordinate(cam_in_world, wrist_in_robot)
     # and save the relevant robot chain transform to file
     save_coordination(R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, stamp=data_dir.split('/')[-1])
+
+if __name__ == "__main__":
+    main()

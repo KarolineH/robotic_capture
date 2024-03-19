@@ -31,7 +31,7 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
     # Create connection to the robot
     args = k_util.parseConnectionArguments()
     with k_util.DeviceConnection.createTcpConnection(args) as router:
-        IF = Kinova3(router, transform_path='./garbage.json')
+        IF = Kinova3(router)
         success = True
 
         # double check that the robot starts out in its safe resting position
@@ -48,7 +48,6 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
             IF.execute_action(state)
             time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
             cam_pose = IF.get_pose() # [x, y, z, theta_x, theta_y, theta_z]
-            # TODO : Instead of waiting for a set duration, could check the wrist pose a few times to make sure it has stabilised
             poses.append(cam_pose)
             #cam.trigger_AF() # trigger the camera to focus
             path, cam_path, msg = cam.capture_image(download=True, target_path=out_dir) # capture an image and download it to the specified directory

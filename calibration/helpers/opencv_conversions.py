@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 
 # A function to convert rotation and translation vectors to homogeneous transformation matrices
-def rvec_tvec_to_homogeneous(rvec, tvec):
+def rodrigues_rvec_tvec_to_homogeneous(rvec, tvec):
     """
-    Convert rotation and translation vectors to homogeneous transformation matrix
+    Convert **Rodrigues** rotation and translation vectors to homogeneous transformation matrix.
     :param rvec: rotation vector
     :param tvec: translation vector
     :return: 4x4 homogeneous transformation matrix

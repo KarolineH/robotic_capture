@@ -2,19 +2,26 @@ import os
 import cv2
 import numpy as np
 
+from .helpers import calibration_io, opencv_conversions
+
+from calibration.helpers import calibration_io, opencv_conversions
+
 # Local imports
 try:
     # Attempt a relative import
-    from .helpers import april_tag_util, io_util, transform_util # if being run as a package
-    plotting = None
+    from .helpers import april_tag_util # if being run as a package
+    plotting = None # this is usually only used for debugging, so not needed when importing as a package
 except ImportError:
-    from helpers import april_tag_util, io_util, transform_util, plotting # local case
+    from helpers import april_tag_util, plotting # local case
 
 class CamCalibration:
 
-    def __init__(self, name, im_dir):
-        self.name = name
+    def __init__(self, cam_id, im_dir):
+        self.cam_id = cam_id
         self.im_dir = im_dir
+        self.resolution = None
+        self.matrix = None
+        self.distortion = None
 
     def april_tag_calibration(self, cam_mat=None, dist_coeff=None, pattern_in_world=np.eye(4), im_dir=None, lower_requirements=False):
         """
@@ -69,26 +76,20 @@ class CamCalibration:
         # Calibrate the camera based on all detected tags in all provided images
         # if no initial camera matrix or distortion coefficients are provided, they are calibrated along with the extrinsics
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, resolution, cam_mat, dist_coeff) # arguments are object points, image points, image size, camera matrix, distortion coefficients
-        # 
 
-        if plot: 
+        if plot and plotting is not None:
+            # For debugging purposes, here the option to plot the pattern origin axes into each image. This is useful to check if the detections and conversions are correct.
             for image, rotation, translation in zip(os.listdir(im_dir), rvecs, tvecs):
                 plotting.plot_axes_on_img(im_dir + image, mtx, dist, rotation, translation) # plot the axes of the first detected tag into each image
 
         # the rotation and translation vectors bring the pattern from object frame to camera frame, that's the same as the pose of the pattern origin given in the camera frame
-        homogeneous_transforms = [transform_util.rvec_tvec_to_homogeneous(rvec, tvec) for rvec, tvec in zip(rvecs, tvecs)]
+        homogeneous_transforms = [opencv_conversions.rodrigues_rvec_tvec_to_homogeneous(rvec, tvec) for rvec, tvec in zip(rvecs, tvecs)]
         obj_in_cam = np.array(homogeneous_transforms) # shape: (n_images, 4, 4), transformation matrices describing object location in the camera frame
         cam_in_obj = np.linalg.inv(obj_in_cam) # camera poses relative to the pattern origin
         cam_in_world = np.matmul(cam_in_obj, pattern_in_world) # camera poses relative to the world frame
 
-        return resolution, mtx, dist, cam_in_world, used_images # image resolution, camera matrix, distortion coefficients, 4x4 homogeneous transforms of the camera poses in world frame, also a list of which images were suitable for calibration and thus poses were estimated
+        self.resolution = resolution
+        self.matrix = mtx
+        self.distortion = dist
 
-if __name__ == "__main__":
-    #im_dir = '/home/kh790/data/april_tag_imgs/'
-    im_dir = '/home/karo/ws/data/calibration_images/april_tag'
-    cam_cal = CamCalibration('test_cam', im_dir)
-    #res,mtx,dist,transforms, used = cam_cal.april_tag_calibration()
-    #plotting.plot_transforms(transforms)
-    #io_util.save_to_yaml('calibration.yaml', cam_cal.name, res, mtx, dist)
-    name, size, k, d = io_util.load_from_yaml('calibration.yaml')
-    print(name, size, k, d)
+        return resolution, mtx, dist, cam_in_world, used_images # image resolution, camera matrix, distortion coefficients, 4x4 homogeneous transforms of the camera poses in world frame, also a list of which images were suitable for calibration and thus poses were estimated
