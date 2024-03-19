@@ -190,8 +190,14 @@ def analyse_pose_errors(im_dir, cam_id):
     cam_poses_from_robot = t @ cam_in_base_mat # poses of the camera, given in the pattern frame, as derived from the robot's proprioception measurements
     cam_poses_from_images = cam_in_pattern # poses of the camera, given in the pattern frame, as derived from the AprilTag locations in the images
 
-    plotting.plot_transforms(cam_poses_from_images)
-    plotting.plot_transforms(cam_poses_from_robot)
+    try:
+        plotting.plot_transforms(cam_poses_from_images)
+    except:
+        print('Could not plot transforms, use Python 3.10 and install Pytransform3D to show these plots.')
+    try:
+        plotting.plot_transforms(cam_poses_from_robot)
+    except:
+        print('Could not plot transforms, use Python 3.10 and install Pytransform3D to show these plots.')
 
     diff = np.subtract(cam_poses_from_robot, cam_poses_from_images)
 
@@ -259,10 +265,19 @@ def plot_errors_from_files(im_dir):
 
 
 def main(cam_id='EOS01'):
+    '''
+    Ideally run this first part using Python 3.8 - the Kinova Kortex API has not been updated beyond that yet.
+    '''
     # Take measurements
     im_dir = set_vs_measured_states()
     # alternatively specify a previous measurement set
     # im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+
+
+    '''
+    Ideally, run this part using Python 3.10
+    Some plots won't display if using earlier versions of Python, because the Pytransform3D library is not compatible with earlier versions.
+    '''
     anaylse_joint_errors(im_dir)
     analyse_pose_errors(im_dir, cam_id)
     plot_errors_from_files(im_dir)
