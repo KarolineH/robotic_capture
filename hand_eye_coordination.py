@@ -146,43 +146,19 @@ def coordinate(cam_coords, wrist_coords):
 
     # Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z] in meters and degrees
     # We convert them to 4x4 homogeneous transformation matrices
-    wrist_R = []
-    wrist_t = []
-    base_R = []
-    base_t = []
-    for pose in wrist_coords:
-        pose = np.array(pose)
-        tvec = pose[:3]
-        euler_angles = pose[3:]
-        rmat = conv.euler_to_mat(*euler_angles)
-        wrist_R.append(rmat)
-        wrist_t.append(tvec)
 
-        # build 4x4 homogeneous transformation matrix
-        M = np.zeros((4,4))
-        M[:3,:3] = rmat
-        M[:3,3] = tvec
-        M[3,3] = 1
+    wrist_in_base = conv.robot_poses_as_htms(wrist_coords) # robot wrist in base frame [n,4,4]
+    base_in_wrist = np.asarray([np.linalg.inv(mat) for mat in wrist_in_base]) # robot base in wrist frame [n,4,4]
 
-        # also get the inverse of this transform, which is needed for the second method
-        Mi = np.linalg.inv(M) # robot base in wrist frame
-        base_R.append(Mi[:3,:3])
-        base_t.append(Mi[:3,3])
-    
-    wrist_R = np.array(wrist_R)
-    wrist_t = np.array(wrist_t)
-    base_R = np.array(base_R) # inverse of the above
-    base_t = np.array(base_t) # inverse of the above
+    wrist_R = wrist_in_base[:,:3,:3]
+    wrist_t = wrist_in_base[:,:3,3]
+    base_R = base_in_wrist[:,:3,:3]
+    base_t = base_in_wrist[:,:3,3]
 
     # Camera poses are given as 4x4 homogeneous transformation matrices
     # they are camera locations, given in the pattern frame
     # also need to be inverted
-    pattern_in_cam = []
-    for mat in cam_coords:
-        inv_mat = np.linalg.inv(mat)
-        pattern_in_cam.append(inv_mat)
-    pattern_in_cam = np.array(pattern_in_cam) # pattern given in camera frame
-    
+    pattern_in_cam = np.asarray([np.linalg.inv(mat) for mat in cam_coords]) # pattern in camera frame [n,4,4]
     cam_R = pattern_in_cam[:,:3,:3]
     cam_t = pattern_in_cam[:,:3,3]
 

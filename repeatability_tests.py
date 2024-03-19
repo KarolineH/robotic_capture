@@ -41,7 +41,7 @@ def set_vs_measured_states():
     # load the movement sequence
     actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
     sequence, action_list = data_io.read_action_from_file(actions_dir + '/calibration_sequence_44.json')
-    skip_photos_at = [0,45] # first and last pose
+    skip_capture_at = [0,45] # first and last pose
 
     # prep the camera
     capture_params=[32,'AUTO','AUTO',True]
@@ -87,7 +87,7 @@ def set_vs_measured_states():
                 errors_by_speed.append(errors_by_state) # [states x measurements x joints]
                 timesteps_by_speed.append(timesteps_by_state)
 
-                if i not in skip_photos_at:
+                if i not in skip_capture_at:
                     # unless it is a state where we can skip taking a photo, such as a manouvering or starting pose, take a photo
                     time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
                     cam_pose = IF.get_pose()
@@ -186,10 +186,7 @@ def analyse_pose_errors(im_dir, cam_id):
     cam_in_base = poses[indices,:] # [x,y,z,theta_x,theta_y,theta_z]
 
     # multiply (transform from camera to robot base frame) x (transform from robot base to world frame) to get the (transform from camera to world frame)
-    cam_in_base_mat = np.zeros((len(cam_in_base), 4, 4))
-    cam_in_base_mat[:,:3,:3] = np.asarray([conversion.euler_to_mat(*pose[3:]) for pose in cam_in_base])
-    cam_in_base_mat[:,3,3] = 1
-    cam_in_base_mat[:,:3,3] = cam_in_base[:,:3]
+    cam_in_base_mat = conversion.robot_poses_as_htms(cam_in_base) # convert to homogeneous transformation matrices
     cam_poses_from_robot = t @ cam_in_base_mat # poses of the camera, given in the pattern frame, as derived from the robot's proprioception measurements
     cam_poses_from_images = cam_in_pattern # poses of the camera, given in the pattern frame, as derived from the AprilTag locations in the images
 
