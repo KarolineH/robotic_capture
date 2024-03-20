@@ -110,7 +110,7 @@ def set_vs_measured_states():
         IF.reset_speed_limit()
     return im_dir
 
-def anaylse_joint_errors(im_dir):
+def analyse_joint_errors(im_dir):
     '''
     Plot the errors in the measured joint angles compared to the set joint angles recorded in set_vs_measured_states
     '''
@@ -247,6 +247,53 @@ def plot_pose_errors(tl_err, rot_err):
     print(f'Mean errors: {np.mean(abs(tl_err[:,0]))} meters in x, {np.mean(abs(tl_err[:,1]))} meters in y, {np.mean(abs(tl_err[:,2]))} meters in z, and {np.mean(rot_err)} degrees in rotation')
 
     plt.show()
+
+def plot_pose_errors_by_repeat(tl_err, rot_err, repeats=4):
+    set_length = int(tl_err.shape[0]/repeats)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2,2,1)
+    plt.title('Translation errors in x')
+    plt.plot(tl_err[:set_length,0], label='10°/s')
+    plt.plot(tl_err[set_length:2*set_length,0], label='20°/s')
+    plt.plot(tl_err[2*set_length:3*set_length,0], label='30°/s')
+    plt.plot(tl_err[3*set_length:,0], label='40°/s')
+    plt.xlabel('Pose Nr. along the path')
+    plt.ylabel('Error [m]')
+    plt.axhline(0, color='r')
+    plt.legend()
+
+    ax2 = fig.add_subplot(2,2,2)
+    plt.plot(tl_err[:set_length,1], label='10°/s')
+    plt.plot(tl_err[set_length:2*set_length,1], label='20°/s')
+    plt.plot(tl_err[2*set_length:3*set_length,1], label='30°/s')
+    plt.plot(tl_err[3*set_length:,1], label='40°/s')
+    plt.title('Translation errors in y')
+    plt.xlabel('Pose Nr. along the path')
+    plt.ylabel('Error [m]')
+    plt.axhline(0, color='r')
+    plt.legend()
+
+    ax3 = fig.add_subplot(2,2,3)
+    plt.plot(tl_err[:set_length,2], label='10°/s')
+    plt.plot(tl_err[set_length:2*set_length,2], label='20°/s')
+    plt.plot(tl_err[2*set_length:3*set_length,2], label='30°/s')
+    plt.plot(tl_err[3*set_length:,2], label='40°/s')
+    plt.title('Translation errors in z')
+    plt.xlabel('Pose Nr. along the path')
+    plt.ylabel('Error [m]')
+    plt.axhline(0, color='r')
+    plt.legend()
+
+    ax4 = fig.add_subplot(2,2,4)
+    plt.plot(rot_err[:set_length], label='10°/s')
+    plt.plot(rot_err[set_length:2*set_length], label='20°/s')
+    plt.plot(rot_err[2*set_length:3*set_length], label='30°/s')
+    plt.plot(rot_err[3*set_length:], label='40°/s')
+    plt.title('Rotation errors')
+    plt.xlabel('Pose Nr. along the path')
+    plt.ylabel('Error [°]')
+    plt.legend()
+    plt.show()
     return
 
 def plot_errors_from_files(im_dir):
@@ -255,6 +302,7 @@ def plot_errors_from_files(im_dir):
     with open(os.path.join(im_dir, 'rotation_errors.npy'), 'rb') as f:
         rot_err = np.load(f)
     plot_pose_errors(tl_err, rot_err)
+    plot_pose_errors_by_repeat(tl_err, rot_err, repeats=4)
 
     # and again split by speed
     speeds = [10,20,30,40]
@@ -269,17 +317,17 @@ def main(cam_id='EOS01'):
     Ideally run this first part using Python 3.8 - the Kinova Kortex API has not been updated beyond that yet.
     '''
     # Take measurements
-    im_dir = set_vs_measured_states()
+    #im_dir = set_vs_measured_states()
     # alternatively specify a previous measurement set
-    # im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
 
 
     '''
     Ideally, run this part using Python 3.10
     Some plots won't display if using earlier versions of Python, because the Pytransform3D library is not compatible with earlier versions.
     '''
-    anaylse_joint_errors(im_dir)
-    analyse_pose_errors(im_dir, cam_id)
+    # analyse_joint_errors(im_dir)
+    # analyse_pose_errors(im_dir, cam_id)
     plot_errors_from_files(im_dir)
 
 if __name__ == "__main__":

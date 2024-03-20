@@ -86,8 +86,7 @@ class CamCalibration:
         homogeneous_transforms = [opencv_conversions.rodrigues_rvec_tvec_to_homogeneous(rvec, tvec) for rvec, tvec in zip(rvecs, tvecs)]
         obj_in_cam = np.array(homogeneous_transforms) # shape: (n_images, 4, 4), transformation matrices describing object location in the camera frame
         cam_in_obj = np.linalg.inv(obj_in_cam) # camera poses relative to the pattern origin
-        # TODO check if the following transformation is correct
-        cam_in_world = np.matmul(cam_in_obj, pattern_in_world) # camera poses relative to the world frame
+        cam_in_world = pattern_in_world @ cam_in_obj # camera poses relative to the world frame
 
         self.resolution = resolution
         self.matrix = mtx
