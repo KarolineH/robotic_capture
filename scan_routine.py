@@ -3,6 +3,7 @@
 import os
 import time
 import pathlib
+import datetime
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
@@ -21,6 +22,12 @@ Also ensure that the robot eye-in-hand calibration and calibration of camera int
 '''
 
 def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
+
+    # create new directory for the scan
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    im_dir = os.path.join(out_dir, stamp)
+    os.mkdir(im_dir)
+
     # instantiate the camera interface object
     # change capture settings if needed
     # by default this is set to a small aperture to reduce Bokeh effects
@@ -39,7 +46,7 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
         rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
         success &= IF.execute_action(rest_action)
 
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/scan_path2.json")
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_44.json")
         for i,state in enumerate(action_list[:1]):
             IF.execute_action(state) # the first 3 poses are just for the robot to reach the starting position
 
@@ -50,12 +57,12 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
             cam_pose = IF.get_pose() # [x, y, z, theta_x, theta_y, theta_z]
             poses.append(cam_pose)
             #cam.trigger_AF() # trigger the camera to focus
-            path, cam_path, msg = cam.capture_image(download=True, target_path=out_dir) # capture an image and download it to the specified directory
+            path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
         
         IF.execute_action(action_list[-1]) # the last pose is just for the robot to reach back to the home position
 
     pose_data = [pose.tolist() for pose in poses]
-    poses_to_txt(pose_data, os.path.join(out_dir, 'cam_poses.txt'))
+    poses_to_txt(pose_data, os.path.join(im_dir, 'cam_poses.txt'))
     return
 
 def poses_to_txt(pose_data, path):
@@ -68,5 +75,5 @@ def poses_to_txt(pose_data, path):
             f.write(f"{quaternions[i][-1]}, {quaternions[i][0]}, {quaternions[i][1]}, {quaternions[i][2]}, {translations[i][0]}, {translations[i][1]}, {translations[i][2]}\n")
 
 if __name__ == "__main__":
-    output_directory = '/home/kh790/data/test_scan'
+    output_directory = '/home/kh790/data/scans'
     record_data(output_directory, sleep_time=5)

@@ -177,8 +177,8 @@ def coordinate(cam_coords, wrist_coords):
     M_cam2wrist_transform[3,3] = 1
     M_wrist2cam_transform = np.linalg.inv(M_cam2wrist_transform) # the transform from the camera to the wrist, or the pose of the camera expressed in the wrist frame
 
-    R_cam2wrist = M_wrist2cam_transform[:3,:3] # the rotation from the camera to the wrist, or the rotation of the camera expressed in the wrist frame
-    t_cam2wrist = M_wrist2cam_transform[:3,3] # the translation from the camera to the wrist, or the translation of the camera expressed in the wrist frame
+    R_cam2wrist = M_wrist2cam_transform[:3,:3] # the rotation from the camera frame to the wrist frame, or the rotation of the camera expressed in the wrist frame
+    t_cam2wrist = M_wrist2cam_transform[:3,3] # the translation from the camera frame to the wrist frame, or the translation of the camera expressed in the wrist frame
 
     return R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam
 
