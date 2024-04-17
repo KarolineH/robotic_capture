@@ -67,8 +67,15 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
 
 def poses_to_txt(pose_data, path):
     translations = [pose[:3] for pose in pose_data]
-    quaternions = [conv.euler_to_quat(*pose[3:]) for pose in pose_data]
+    euler_angles = [pose[3:] for pose in pose_data]
 
+    # since this txt is intended for use with COLMAP we need to convert here
+    # from a right-handed coordinate frame (OpenCV) to a left-handed coordinate frame (COLMAP)
+    # Only the z-axis is flipped
+    translations = [[x, y, -z] for x, y, z in translations]
+    euler_angles = [[x, y, -z] for x, y, z in euler_angles]
+
+    quaternions = [conv.euler_to_quat(*angl) for angl in euler_angles]
     with open(path, 'w') as f:
         f.write("# QW, QX, QY, QZ, TX, TY, TZ\n")
         for i in range(len(pose_data)):
