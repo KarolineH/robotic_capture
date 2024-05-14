@@ -4,6 +4,7 @@ import os
 import time
 import pathlib
 import datetime
+import numpy as np
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.data_io as data_io
@@ -58,7 +59,8 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
             poses.append(cam_pose)
             #cam.trigger_AF() # trigger the camera to focus
             path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
-        
+            #TODO: keep record of the file names linked with the corresponding poses!       
+
         IF.execute_action(action_list[-1]) # the last pose is just for the robot to reach back to the home position
 
     pose_data = [pose.tolist() for pose in poses]
@@ -66,21 +68,38 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
     return
 
 def poses_to_txt(pose_data, path):
-    translations = [pose[:3] for pose in pose_data]
-    euler_angles = [pose[3:] for pose in pose_data]
+    # First, save the raw poses to a separate file for future reference
+    raw_poses = np.asarray(pose_data)
+    raw_file = '/'.join(path.split('/')[:-1]) + '/raw_poses.txt'
+    np.savetxt(raw_file, raw_poses, delimiter=',', comments='x,y,z,theta_x,theta_y,theta_z')
 
-    # since this txt is intended for use with COLMAP we need to convert here
-    # from a right-handed coordinate frame (OpenCV) to a left-handed coordinate frame (COLMAP)
-    # Only the z-axis is flipped
-    translations = [[x, y, -z] for x, y, z in translations]
-    euler_angles = [[x, y, -z] for x, y, z in euler_angles]
+    # 1. COLMAP expects the transformation from world to camera frame, not from camera to world frame. Need to invert the transformation. We will do this in homogeneous transformation matrix form.
+    transforms = conv.robot_poses_as_htms(np.asarray(pose_data))
+    inv_transforms = np.asarray([conv.invert_transform(mat) for mat in transforms])
 
-    quaternions = [conv.euler_to_quat(*angl) for angl in euler_angles]
+    # 2. COLMAP expects the camera poses in a left-handed coordinate frame, while the robot gives them in a right-handed coordinate frame. Need to flip the z-axis.
+    Rs = transforms[:, :3, :3]
+    ts = transforms[:, :3, 3]
+    Rs[:,:,2] *= -1
+    ts[:,2] *= -1
+
+    # 3. COLMAP expects the camera poses in quaternion format, while the robot gives them in euler angles. Need to convert the euler angles to quaternions.
+    quaternions = conv.mat_to_quat(Rs)
+    # reorder the quaternion to scalar-first format
+    quaternions = np.concatenate((quaternions[:,3].reshape(-1,1), quaternions[:,:3]), axis=1)
+
+    # 4. Formatting and saving to txt file
     with open(path, 'w') as f:
-        f.write("# QW, QX, QY, QZ, TX, TY, TZ\n")
+        f.write("# id, QW, QX, QY, QZ, TX, TY, TZ, camera_id\n")
         for i in range(len(pose_data)):
-            f.write(f"{quaternions[i][-1]}, {quaternions[i][0]}, {quaternions[i][1]}, {quaternions[i][2]}, {translations[i][0]}, {translations[i][1]}, {translations[i][2]}\n")
+            # COLMAP expects image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, (file name, TBD)
+            f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 \n")
+            f.write("\n") # add a newline between each pose, COLMAP expects this
 
 if __name__ == "__main__":
-    output_directory = '/home/kh790/data/scans'
-    record_data(output_directory, sleep_time=5)
+    #output_directory = '/home/kh790/data/scans'
+    #record_data(output_directory, sleep_time=5)
+
+    in_file = '/home/karo/Desktop/original_poses_scan3.txt'
+    pose_data = np.loadtxt(in_file)
+    poses = poses_to_txt(pose_data, in_file)
