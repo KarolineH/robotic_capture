@@ -2,17 +2,17 @@ import os
 import cv2
 import numpy as np
 
-from .helpers import opencv_conversions
-
-from calibration.helpers import opencv_conversions
-
 # Local imports
 try:
     # Attempt a relative import
     from .helpers import april_tag_util # if being run as a package
+    from .helpers import colmap_wrapper
+    from .helpers import colmap_io
+    from .helpers import opencv_conversions
     plotting = None # this is usually only used for debugging, so not needed when importing as a package
 except ImportError:
-    from helpers import april_tag_util, plotting # local case
+    from helpers import april_tag_util, plotting, colmap_wrapper, colmap_io # local case
+    from helpers import opencv_conversions
 
 class CamCalibration:
 
@@ -93,3 +93,51 @@ class CamCalibration:
         self.distortion = dist
 
         return resolution, mtx, dist, cam_in_world, used_images # image resolution, camera matrix, distortion coefficients, 4x4 homogeneous transforms of the camera poses in world frame, also a list of which images were suitable for calibration and thus poses were estimated
+    
+
+    def colmap_calibration(self):
+        """
+        COLMAP camera calibration.
+
+        Calibrate the camera using a provided series of calibration images.
+        Assumes that all images were taken with the same camera, at the same resolution and focal length, and have not been auto-rotated.
+        Currently assumes sequential image series and the OpenCV camera model.
+        Does not take any known camera poses, so the reference frame of the reconstructed model is NOT anchored to the real world frame, but most likely the first image or a normalized center.
+        Please note that this calibration method creates COLMAP files in the image directory.
+        :param im_dir: optionally specify a different directory containing calibration images
+        :return: ...
+        """
+
+        # Run COLMAP
+        # Options:
+            # OPENCV model yields fx, fy, cx, cy, k1, k2, p1, p2
+            # SIMPLE_RADIAL yields f, cx, cy, k
+            # exhaustive_matcher or sequential_matcher
+            # If a sparse reconstruction model already exist in the folder, it does not run again. But you can force it to run again by setting force_rerun=True.
+        colmap_wrapper.gen_poses(basedir=self.im_dir, match_type='sequential_matcher', model_type='OPENCV', force_rerun=False)
+
+        # Retrieve the camera parameters from the colmap output
+        camerasfile = os.path.join(self.im_dir, 'sparse/0/cameras.bin')
+        camdata = colmap_io.read_cameras_binary(camerasfile)
+        list_of_keys = list(camdata.keys())
+        cam = camdata[list_of_keys[0]]
+        resolution = np.array([cam.width, cam.height]) # width, height
+        mtx = np.array([[cam.params[0],0,cam.params[2]],[0,cam.params[1],cam.params[3]],[0,0,1]])
+        dist = np.array(cam.params[4:])
+
+        # Retrieve the camera poses from the colmap output
+        cam_in_world = colmap_io.load_camera_poses(self.im_dir) #c2w: camera to world transformation matrices for each frame
+        # these assume a frame only specified as [r, -u, t], which we'll assume is x-right, y-down, z-through the image plane] (bc colmap uses right handed frames)
+
+        # poses,_ = load_data(self.base_dir, load_imgs=False)
+        # from the regular COLMAP output orientation, this is rotated so that the targeted frame is: x-down, y-right, and x-backwards/towards the camera.
+        # Each poses[:,:-1,0] is a 3x4 homogeneous transformation matrix, with the last row left out (because it is always [0,0,0,1])
+        # w2c_mats and c2w_mats are avaliable also in pose_utils
+        #plotting.plot_transforms(cam_in_world)
+        return resolution, mtx, dist, cam_in_world
+    
+
+if __name__ == '__main__':
+    # Run the calibration routine
+    cc = CamCalibration('EOS01', '/home/karo/ws/data/calibration_images/colmap')
+    cc.colmap_calibration()
