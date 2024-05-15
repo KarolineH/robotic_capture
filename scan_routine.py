@@ -68,31 +68,29 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
     return
 
 def poses_to_txt(pose_data, path):
-    # First, save the raw poses to a separate file for future reference
+    # First, save the raw poses to a separate file for future reference and debugging.
     raw_poses = np.asarray(pose_data)
     raw_file = '/'.join(path.split('/')[:-1]) + '/raw_poses.txt'
     np.savetxt(raw_file, raw_poses, delimiter=',', comments='x,y,z,theta_x,theta_y,theta_z')
 
-    # 1. COLMAP expects the transformation from world to camera frame, not from camera to world frame. Need to invert the transformation. We will do this in homogeneous transformation matrix form.
+    # 1. COLMAP expects the transformation from world to camera frame, not from camera to world frame. 
+    # Need to invert the transformation. We will do this in homogeneous transformation matrix form.
     transforms = conv.robot_poses_as_htms(np.asarray(pose_data))
-    inv_transforms = np.asarray([conv.invert_transform(mat) for mat in transforms])
+    inv_transforms = np.asarray([conv.invert_transform(mat) for mat in transforms]) # invert the transforms
+    Rs = inv_transforms[:, :3, :3]
+    ts = inv_transforms[:, :3, 3]
 
-    # 2. COLMAP expects the camera poses in a left-handed coordinate frame, while the robot gives them in a right-handed coordinate frame. Need to flip the z-axis.
-    Rs = transforms[:, :3, :3]
-    ts = transforms[:, :3, 3]
-    Rs[:,:,2] *= -1
-    ts[:,2] *= -1
-
-    # 3. COLMAP expects the camera poses in quaternion format, while the robot gives them in euler angles. Need to convert the euler angles to quaternions.
+    # 2. COLMAP expects the camera poses in quaternion format, while the robot gives them in euler angles. Need to convert the euler angles to quaternions.
     quaternions = conv.mat_to_quat(Rs)
     # reorder the quaternion to scalar-first format
     quaternions = np.concatenate((quaternions[:,3].reshape(-1,1), quaternions[:,:3]), axis=1)
 
-    # 4. Formatting and saving to txt file
+    # 3. Formatting and saving to txt file
     with open(path, 'w') as f:
         f.write("# id, QW, QX, QY, QZ, TX, TY, TZ, camera_id\n")
         for i in range(len(pose_data)):
             # COLMAP expects image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, (file name, TBD)
+            #TODO: write the corresponding image file name to the end of each line
             f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 \n")
             f.write("\n") # add a newline between each pose, COLMAP expects this
 
@@ -100,6 +98,6 @@ if __name__ == "__main__":
     #output_directory = '/home/kh790/data/scans'
     #record_data(output_directory, sleep_time=5)
 
-    in_file = '/home/karo/Desktop/original_poses_scan3.txt'
-    pose_data = np.loadtxt(in_file)
-    poses = poses_to_txt(pose_data, in_file)
+    # in_file = '/home/karo/Desktop/original_poses_before_conversion3.txt'
+    # pose_data = np.loadtxt(in_file)
+    # poses = poses_to_txt(pose_data, in_file)
