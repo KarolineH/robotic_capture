@@ -72,12 +72,11 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
 
         # double check that the robot starts out in its safe resting position
         actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-        rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
-        success &= IF.execute_action(rest_action)
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/orienting the robot's new workspace for caliibration.json") # this sequence has no start or stop positions integrated
+        rest_position = data_io.read_action_from_file(actions_dir + "/REST01.json")
+        ready_position = data_io.read_action_from_file(actions_dir + "/Camera UP position.json")
 
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_20.json") # this sequence has 23 states, the first and last two are for reaching the starting and resting positions only
-        for i,state in enumerate(action_list[:2]):
-            IF.execute_action(state) # reach the starting position
+        IF.execute_action(ready_position) # reach the starting position
 
         # Start recording once the robot reaches the starting state
         if use_hdmi_stream:
@@ -93,7 +92,7 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
             file_path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
         # Execute the rest of the movement sequence
-        for i,state in enumerate(action_list[2:-2]):
+        for i,state in enumerate(action_list):
             IF.execute_action(state)
             if not (use_hdmi_stream or burst):
                 # If capturing still images, not a burst or HDMI stream, capture an image at each pose
@@ -112,8 +111,8 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
                 cam.download_file(path, target_file=os.path.join(im_dir,path.split('/')[-1]))
 
         # Return to the resting position
-        IF.execute_action(action_list[-2])
-        IF.execute_action(action_list[-1])
+        IF.execute_action(ready_position)
+        IF.execute_action(rest_position)
     return im_dir
 
 def video_to_frames(vid_dir=None, sampling_rate=10):
