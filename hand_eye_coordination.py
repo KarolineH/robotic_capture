@@ -115,16 +115,17 @@ def get_camera_poses(im_dir, cam_id='EOS01', calibrate_intrinsics=False):
         # find the most recent camera calibration file and load the intrinsic camera parameters
         intrinsics_file = calibration_io.fetch_recent_intrinsics_path(cam_id)
         if intrinsics_file is not None:
-            cam_name, frame_size, matrix, distortion = calibration_io.load_intrinsics_from_yaml(intrinsics_file)
+            cam_name, frame_size, matrix, distortion, model = calibration_io.load_intrinsics_from_yaml(intrinsics_file)
             # then evaluate the images and get the extrinsics, using the loaded intrinsics
-            __, __, __, cam_in_world,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
+            __, __, __, cam_in_world,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True, cam_model=model)
             return cam_in_world, used
         
     # alternatively calibrate both intrinsics and extrinsics from the image set
-    frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
+    distortion_model = 'OPENCV' # the camera model used for calibration
+    frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True, cam_model=distortion_model)
     stamp = im_dir.split('/')[-1]
     cam_calib_file = str(pathlib.Path(__file__).parent.resolve()) + f'/config/camera_info_{cam_id}_{stamp}.yaml'
-    calibration_io.save_intrinsics_to_yaml(cam_calib_file, cam_id, frame_size, matrix, distortion)
+    calibration_io.save_intrinsics_to_yaml(cam_calib_file, cam_id, distortion_model, frame_size, matrix, distortion)
     return cam_in_world, used
 
 def get_wrists_poses(directory):

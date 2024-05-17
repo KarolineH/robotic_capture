@@ -23,7 +23,7 @@ class CamCalibration:
         self.matrix = None
         self.distortion = None
 
-    def april_tag_calibration(self, cam_mat=None, dist_coeff=None, pattern_in_world=np.eye(4), im_dir=None, lower_requirements=False):
+    def april_tag_calibration(self, cam_mat=None, dist_coeff=None, pattern_in_world=np.eye(4), im_dir=None, lower_requirements=False, cam_model='OPENCV'):
         """
         OpenCV camera calibration using AprilTags as a calibration pattern.
 
@@ -33,11 +33,15 @@ class CamCalibration:
         :param dist_coeff: initial distortion coefficients, if known
         :param pattern_in_world: 4x4 homogeneous transformation matrix describing the pose of the pattern in the world frame. If not provided, the pattern is assumed to be at the origin of the world frame.
         :param im_dir: optionally specify a different directory containing calibration images
+        :param lower_requirements: set to True if the apriltag detection fails due to too many borders being detected in contours.
+        :param cam_model: 'OPENCV' returns instrinsics [fx, fy, cx, cy, k1, k2, p1, p2, k3], 'FULL_OPENCV' returns [fx, fy, cx, cy, k1, k2, p1, p2, k3, k4, k5, k6]
         :return: dict of intrinics (incl. RMS re-projection error, camera matrix, distortion coefficients), estimated rotation vectors and translation vectors for all provided images
         """
         # cv2 (opencv) uses a right-handed coordinate system with positive axes going x-right, y-down, z-forward (away from camera through the image plane)
         # x=red, y=green, z=blue
         # We use the same convention throughout this function.
+
+        flag_dict = {'OPENCV': 0, 'FULL_OPENCV': cv2.CALIB_RATIONAL_MODEL}
 
         plot = False # useful for debugging, set to True to plot the axes of the first detected tag into each image
         if im_dir is None:
@@ -75,7 +79,7 @@ class CamCalibration:
 
         # Calibrate the camera based on all detected tags in all provided images
         # if no initial camera matrix or distortion coefficients are provided, they are calibrated along with the extrinsics
-        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, resolution, cam_mat, dist_coeff) # arguments are object points, image points, image size, camera matrix, distortion coefficients
+        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, resolution, cam_mat, dist_coeff, flags=flag_dict[cam_model]) # arguments are object points, image points, image size, camera matrix, distortion coefficients
 
         if plot and plotting is not None:
             # For debugging purposes, here the option to plot the pattern origin axes into each image. This is useful to check if the detections and conversions are correct.
@@ -95,9 +99,9 @@ class CamCalibration:
         return resolution, mtx, dist, cam_in_world, used_images # image resolution, camera matrix, distortion coefficients, 4x4 homogeneous transforms of the camera poses in world frame, also a list of which images were suitable for calibration and thus poses were estimated
     
 
-    def colmap_calibration(self):
+    def colmap_calibration(self, im_dir=None, cam_model='OPENCV'):
         """
-        COLMAP camera calibration.
+        COLMAP camera calibration. Intended for calibration intrinsics and extrinsics together.
 
         Calibrate the camera using a provided series of calibration images.
         Assumes that all images were taken with the same camera, at the same resolution and focal length, and have not been auto-rotated.
@@ -105,16 +109,21 @@ class CamCalibration:
         Does not take any known camera poses, so the reference frame of the reconstructed model is NOT anchored to the real world frame, but most likely the first image or a normalized center.
         Please note that this calibration method creates COLMAP files in the image directory.
         :param im_dir: optionally specify a different directory containing calibration images
+        :param cam_model: 'OPENCV' returns instrinsics [fx, fy, cx, cy, k1, k2, p1, p2], 'FULL_OPENCV' returns [fx, fy, cx, cy, k1, k2, p1, p2, k3, k4, k5, k6]
         :return: ...
         """
 
         # Run COLMAP
         # Options:
             # OPENCV model yields fx, fy, cx, cy, k1, k2, p1, p2
-            # SIMPLE_RADIAL yields f, cx, cy, k
+            # FULL_OPENCV model yields fx, fy, cx, cy, k1, k2, p1, p2, k3, k4, k5, k6
+            # (SIMPLE_RADIAL yields f, cx, cy, k)
+            # (SIMPLE_PINHOLE yields f, cx, cy)
             # exhaustive_matcher or sequential_matcher
             # If a sparse reconstruction model already exist in the folder, it does not run again. But you can force it to run again by setting force_rerun=True.
-        colmap_wrapper.gen_poses(basedir=self.im_dir, match_type='sequential_matcher', model_type='OPENCV', force_rerun=False)
+        if im_dir is None:
+            im_dir = self.im_dir
+        colmap_wrapper.gen_poses(basedir=im_dir, match_type='exhaustive_matcher', model_type=cam_model, force_rerun=False)
 
         # Retrieve the camera parameters from the colmap output
         camerasfile = os.path.join(self.im_dir, 'sparse/0/cameras.bin')
@@ -139,5 +148,5 @@ class CamCalibration:
 
 if __name__ == '__main__':
     # Run the calibration routine
-    cc = CamCalibration('EOS01', '/home/karo/ws/data/calibration_images/colmap')
+    cc = CamCalibration('EOS01', '/home/karo/ws/data/calibration_images/repeat_test')
     cc.colmap_calibration()

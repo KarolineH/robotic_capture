@@ -129,7 +129,7 @@ def video_to_frames(vid_dir=None, sampling_rate=10):
         count += 1
     return
 
-def calibrate(cam_id, calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibration_imgs/cam_calib', save=True):
+def calibrate(cam_id, calib_file='./camera_info.yaml', im_dir='/home/kh790/data/calibration_imgs/cam_calib', cam_model='OPENCV', save=True):
     '''
     Perform calibration using the images in im_dir.
     This is done via AprilTag detection and OpenCV camera calibration.
@@ -137,12 +137,12 @@ def calibrate(cam_id, calib_file='./camera_info.yaml', im_dir='/home/kh790/data/
     '''
 
     cc = CamCalibration(cam_id, im_dir)
-    frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True)
+    frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True, cam_model=cam_model)
     if save:
-        calibration_io.save_intrinsics_to_yaml(calib_file, cam_id, frame_size, matrix, distortion)
+        calibration_io.save_intrinsics_to_yaml(calib_file, cam_id, cam_model, frame_size, matrix, distortion)
     return frame_size, matrix, distortion, cam_in_world, used
 
-def main(cam_id='EOS01'):
+def main(cam_id='EOS01', cam_model='OPENCV'):
     # First, run the data recording routine. Please be careful, this is a potentially dangerous operation. Be aware of your surroundings. The robot has no collision detection or obstacle awareness in this mode.
     im_dir = record_data(use_hdmi_stream=False, burst=False)
 
@@ -154,7 +154,7 @@ def main(cam_id='EOS01'):
     target_file = calibr_dir + f'/camera_info_{cam_id}_{stamp}.yaml'
 
     # Perform the calibration
-    __, matrix, distortion, __, __ = calibrate(cam_id, calib_file=target_file, im_dir=im_dir)
+    __, matrix, distortion, __, __ = calibrate(cam_id, calib_file=target_file, im_dir=im_dir, cam_model=cam_model)
 
 if __name__ == "__main__":
-    main()
+    main(cam_id='EOS01', cam_model = 'FULL_OPENCV')

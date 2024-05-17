@@ -4,11 +4,14 @@ import pathlib
 import os
 
 
-def save_intrinsics_to_yaml(out_file, cam_id, frame_size, matrix, distortion):
+def save_intrinsics_to_yaml(out_file, cam_id, model, frame_size, matrix, distortion):
 
     '''
     Save camera instrinsics to a yaml file. 
     '''
+
+    # Find the number of distortion coefficients, this is the number of elements after which all remaining elements are zero.
+    nr_dist_coeffs = np.max(np.where(distortion!=0)[1]) + 1
     
     assert matrix.shape == (3, 3)
     data = {
@@ -20,11 +23,11 @@ def save_intrinsics_to_yaml(out_file, cam_id, frame_size, matrix, distortion):
             'cols': 3,
             'data': matrix.flatten().tolist()
         },
-        'distortion_model': 'OPENCV',
+        'distortion_model': model,
         'distortion_coefficients': {
             'rows': 1,
-            'cols': 5,
-            'data': distortion.flatten().tolist()
+            'cols': int(nr_dist_coeffs),
+            'data': distortion.flatten()[:nr_dist_coeffs].tolist()
         }
     }
     yaml.dump(data, open(out_file, 'w'), sort_keys=False)
@@ -37,10 +40,11 @@ def load_intrinsics_from_yaml(in_file):
     with open(in_file, 'r') as f:
         calib = yaml.safe_load(f)
     cam_id = calib['camera_name']
+    cam_model = calib['distortion_model']
     matrix = np.asarray(calib['camera_matrix']['data']).reshape([3,3])
     distortion = np.asarray(calib['distortion_coefficients']['data'])
     frame_size = (calib['image_width'], calib['image_height'])
-    return cam_id, frame_size, matrix, distortion
+    return cam_id, frame_size, matrix, distortion, cam_model
 
 def save_transform_to_yaml(out_file, data):
     '''

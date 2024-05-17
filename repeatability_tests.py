@@ -166,12 +166,13 @@ def analyse_pose_errors(im_dir, cam_id):
     intrinsics_file = calibration_io.fetch_recent_intrinsics_path(cam_id)
     if intrinsics_file is not None:
         # load the intrinsic camera parameters from a file
-        cam_name, frame_size, matrix, distortion = calibration_io.load_intrinsics_from_yaml(intrinsics_file)
+        cam_name, frame_size, matrix, distortion, model = calibration_io.load_intrinsics_from_yaml(intrinsics_file)
         # then evaluate the images and get the extrinsics, using the loaded intrinsics
-        __, __, __, cam_in_pattern,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True)
+        __, __, __, cam_in_pattern,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True, cam_model=model)
     else:
         # if not available, calibrate intrinsics and extrinsics from the images
-        frame_size,matrix,distortion,cam_in_pattern,used = cc.april_tag_calibration(lower_requirements=True)
+        distortion_model = 'OPENCV' # the camera model used for calibration
+        frame_size,matrix,distortion,cam_in_pattern,used = cc.april_tag_calibration(lower_requirements=True, cam_model=distortion_model)
     
     # load the transform from the robot base to the world/pattern frame
     base_transform_file = calibration_io.fetch_recent_base_transform_path()
