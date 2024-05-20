@@ -70,19 +70,21 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         success = True
 
         # double check that the robot starts out in its safe resting position
+        # load all required pre-configured actions from files
         actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-        rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
-        success &= IF.execute_action(rest_action)
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/orienting the robot's new workspace for caliibration.json") # this sequence has no start or stop positions integrated
+        rest_position = data_io.read_action_from_file(actions_dir + "/REST01.json")
+        ready_position = data_io.read_action_from_file(actions_dir + "/Camera UP position.json")
 
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_44.json")
+        success &= IF.execute_action(rest_position)
+        success &= IF.execute_action(ready_position) # reach the starting position
 
         # Start recording
         if use_hdmi_stream:
             rec.start_recording(os.path.join(im_dir,'hand_eye_calibration.mp4'))
 
         poses = []
-        IF.execute_action(action_list[0]) # reach the starting position
-        for i,state in enumerate(action_list[1:-1]):
+        for i,state in enumerate(action_list):
             IF.execute_action(state)
             time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
             wrist_pose = IF.get_pose()
@@ -94,7 +96,10 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         if use_hdmi_stream:           
             rec.stop_recording() # stop the recording
 
-        IF.execute_action(action_list[-1]) # back to the resting position
+        # Return to the resting position
+        IF.execute_action(ready_position)
+        IF.execute_action(rest_position)
+        print("Data recording complete.")
 
     pose_data = [pose.tolist() for pose in poses]
     json.dump(pose_data, open(os.path.join(im_dir, 'hand_eye_wrist_poses.json'), 'w'))
@@ -115,8 +120,10 @@ def get_camera_poses(im_dir, cam_id='EOS01', calibrate_intrinsics=False):
         # find the most recent camera calibration file and load the intrinsic camera parameters
         intrinsics_file = calibration_io.fetch_recent_intrinsics_path(cam_id)
         if intrinsics_file is not None:
+            print(f"Loading camera intrinsics from {intrinsics_file}")
             cam_name, frame_size, matrix, distortion, model = calibration_io.load_intrinsics_from_yaml(intrinsics_file)
             # then evaluate the images and get the extrinsics, using the loaded intrinsics
+            print("Calibrating extrinsics based on AprilTag detection.")
             __, __, __, cam_in_world,used = cc.april_tag_calibration(matrix, distortion, lower_requirements=True, cam_model=model)
             return cam_in_world, used
         
@@ -147,6 +154,7 @@ def coordinate(cam_coords, wrist_coords):
 
     # Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z] in meters and degrees
     # We convert them to 4x4 homogeneous transformation matrices
+    print("Calculating the hand-eye coordination...")
 
     wrist_in_base = conv.robot_poses_as_htms(wrist_coords) # robot wrist in base frame [n,4,4]
     base_in_wrist = np.asarray([np.linalg.inv(mat) for mat in wrist_in_base]) # robot base in wrist frame [n,4,4]
@@ -214,7 +222,7 @@ def save_coordination(R,t,Rw=None,tw=None,stamp=''):
 
 def main(cam_id = 'EOS01'):
     # First run the recording routine
-    data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=6)
+    data_dir = record_data(use_hdmi_stream = False, output_directory='/home/kh790/data/calibration_imgs/hand_eye_coord', sleep_time=8)
     # Alternatively select a folder with previously recorded images
     # data_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-03-14_12-53-26'
 
@@ -233,6 +241,7 @@ def main(cam_id = 'EOS01'):
     R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = coordinate(cam_in_world, wrist_in_robot)
     # and save the relevant robot chain transform to file
     save_coordination(R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, stamp=data_dir.split('/')[-1])
+    print("Hand-eye coordination complete.")
 
 if __name__ == "__main__":
     main()

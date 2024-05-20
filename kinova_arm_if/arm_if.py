@@ -36,6 +36,7 @@ class Kinova3:
                 self.camera_frame_transform[3:] = np.rad2deg(self.camera_frame_transform[3:])
             else:
                 self.camera_frame_transform = [0, -0.045, 0.085, -90, 0, 0] # if not available, use this estimate
+        print('Using camera frame transform:', self.camera_frame_transform)
         self.camera_weight = 2 #kg, this is an estimate
         self.camera_center_of_mass = np.array([0, 0, 0.083]) #meters, this is an estimate
         self.base = BaseClient(router)

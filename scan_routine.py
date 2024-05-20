@@ -40,34 +40,39 @@ def record_data(out_dir, capture_params=[32,'AUTO','AUTO',True], sleep_time=2):
     args = k_util.parseConnectionArguments()
     with k_util.DeviceConnection.createTcpConnection(args) as router:
         IF = Kinova3(router)
+        print(IF.camera_frame_transform)
         success = True
 
         # double check that the robot starts out in its safe resting position
         actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-        rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
-        success &= IF.execute_action(rest_action)
+        sequence, action_list = data_io.read_action_from_file(actions_dir + "/orienting the robot's new workspace for caliibration.json") # this sequence has no start or stop positions integrated
+        rest_position = data_io.read_action_from_file(actions_dir + "/REST01.json")
+        ready_position = data_io.read_action_from_file(actions_dir + "/Camera UP position.json")
 
-        sequence, action_list = data_io.read_action_from_file(actions_dir + "/calibration_sequence_44.json")
-        for i,state in enumerate(action_list[:1]):
-            IF.execute_action(state) # the first 3 poses are just for the robot to reach the starting position
+
+        success &= IF.execute_action(rest_position)
+        success &= IF.execute_action(ready_position) # reach the starting position
 
         poses = []
-        for i,state in enumerate(action_list[1:-1]):
+        files = []
+        for i,state in enumerate(action_list):
             IF.execute_action(state)
             time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
             cam_pose = IF.get_pose() # [x, y, z, theta_x, theta_y, theta_z]
             poses.append(cam_pose)
             #cam.trigger_AF() # trigger the camera to focus
             path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
-            #TODO: keep record of the file names linked with the corresponding poses!       
+            files.append(path)  
 
-        IF.execute_action(action_list[-1]) # the last pose is just for the robot to reach back to the home position
+        success &= IF.execute_action(ready_position)
+        success &= IF.execute_action(rest_position) # reach back to the starting position
 
     pose_data = [pose.tolist() for pose in poses]
-    poses_to_txt(pose_data, os.path.join(im_dir, 'cam_poses.txt'))
+    file_names = [os.path.basename(file) for file in files]
+    poses_to_txt(pose_data, file_names, os.path.join(im_dir, 'cam_poses.txt'))
     return
 
-def poses_to_txt(pose_data, path):
+def poses_to_txt(pose_data, file_names, path):
     # First, save the raw poses to a separate file for future reference and debugging.
     raw_poses = np.asarray(pose_data)
     raw_file = '/'.join(path.split('/')[:-1]) + '/raw_poses.txt'
@@ -89,14 +94,13 @@ def poses_to_txt(pose_data, path):
     with open(path, 'w') as f:
         f.write("# id, QW, QX, QY, QZ, TX, TY, TZ, camera_id\n")
         for i in range(len(pose_data)):
-            # COLMAP expects image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, (file name, TBD)
-            #TODO: write the corresponding image file name to the end of each line
-            f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 \n")
+            # COLMAP expects image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, file name
+            f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 {file_names[i]}\n")
             f.write("\n") # add a newline between each pose, COLMAP expects this
 
 if __name__ == "__main__":
-    #output_directory = '/home/kh790/data/scans'
-    #record_data(output_directory, sleep_time=5)
+    output_directory = '/home/kh790/data/scans'
+    record_data(output_directory, sleep_time=8)
 
     # in_file = '/home/karo/Desktop/original_poses_before_conversion3.txt'
     # pose_data = np.loadtxt(in_file)
