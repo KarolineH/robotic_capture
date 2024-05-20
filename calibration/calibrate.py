@@ -69,7 +69,7 @@ class CamCalibration:
                 valid_detected_ids = detected_ids[np.where(detected_ids <=corner_array.shape[0])] # only use detected tags that are part of the pattern
                 image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)
                 valid_image_coords = image_coords[np.where(detected_ids <=corner_array.shape[0])]
-                world_coords = corner_array[valid_detected_ids]
+                world_coords = corner_array[valid_detected_ids-1]
                 obj_points.append(world_coords)
                 img_points.append(valid_image_coords)
                 used_images.append(image)
@@ -148,5 +148,6 @@ class CamCalibration:
 
 if __name__ == '__main__':
     # Run the calibration routine
-    cc = CamCalibration('EOS01', '/home/karo/ws/data/calibration_images/repeat_test')
-    cc.colmap_calibration()
+    #cc = CamCalibration('EOS01', '/home/kh790/data/calibration_imgs/')#cam_calib/2024-05-16_16-41-12')
+    # cc.colmap_calibration()
+    #cc.april_tag_calibration(lower_requirements=True)
