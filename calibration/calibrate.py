@@ -147,6 +147,7 @@ class CamCalibration:
     
 
 if __name__ == '__main__':
+    pass
     # Run the calibration routine
     #cc = CamCalibration('EOS01', '/home/kh790/data/calibration_imgs/')#cam_calib/2024-05-16_16-41-12')
     # cc.colmap_calibration()

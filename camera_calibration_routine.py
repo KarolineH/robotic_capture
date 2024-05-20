@@ -86,10 +86,6 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
             # OR start capturing a burst (=rapid series) of full-resolution still images
             cam.trigger_AF(duration=1)
             active_burst = cam.start_burst(speed=0)
-        else:
-            # Capture the first still
-            time.sleep(sleep_time) # wait for the arm to settle
-            file_path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
         # Execute the rest of the movement sequence
         for i,state in enumerate(action_list):
@@ -113,6 +109,7 @@ def record_data(capture_params=[32,'AUTO','AUTO',True], use_hdmi_stream = False,
         # Return to the resting position
         IF.execute_action(ready_position)
         IF.execute_action(rest_position)
+        print("Data recording done. Images saved in: ", im_dir)
     return im_dir
 
 def video_to_frames(vid_dir=None, sampling_rate=10):
@@ -135,11 +132,12 @@ def calibrate(cam_id, calib_file='./camera_info.yaml', im_dir='/home/kh790/data/
     This is done via AprilTag detection and OpenCV camera calibration.
     Assumes the standard AprilTag pattern used in our lab, can be altered if needed, see the calibration module for details.
     '''
-
+    print(f"Calibrating camera")
     cc = CamCalibration(cam_id, im_dir)
     frame_size,matrix,distortion,cam_in_world,used = cc.april_tag_calibration(lower_requirements=True, cam_model=cam_model)
     if save:
         calibration_io.save_intrinsics_to_yaml(calib_file, cam_id, cam_model, frame_size, matrix, distortion)
+    print(f"Camera calibration done. Calibration parameters saved in: {calib_file}")
     return frame_size, matrix, distortion, cam_in_world, used
 
 def main(cam_id='EOS01', cam_model='OPENCV'):
