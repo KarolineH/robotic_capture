@@ -69,10 +69,12 @@ class CamCalibration:
                 valid_detected_ids = detected_ids[np.where(detected_ids <=corner_array.shape[0])] # only use detected tags that are part of the pattern
                 image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)
                 valid_image_coords = image_coords[np.where(detected_ids <=corner_array.shape[0])]
-                world_coords = corner_array[valid_detected_ids-1]
+                world_coords = corner_array[valid_detected_ids-1] # -1 because the first tag is tag 1 not tag 0
                 obj_points.append(world_coords)
                 img_points.append(valid_image_coords)
                 used_images.append(image)
+                if plot and plotting is not None:
+                    plotting.plot_detected_april_corners(im_dir+'/'+image, valid_image_coords)
 
             if resolution is None:
                 resolution = gray.shape[::-1] # width, height 
@@ -80,11 +82,12 @@ class CamCalibration:
         # Calibrate the camera based on all detected tags in all provided images
         # if no initial camera matrix or distortion coefficients are provided, they are calibrated along with the extrinsics
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, resolution, cam_mat, dist_coeff, flags=flag_dict[cam_model]) # arguments are object points, image points, image size, camera matrix, distortion coefficients
+        #rvecs, tvecs are the rotation and translation of the pattern origin given in the camera frame
 
         if plot and plotting is not None:
             # For debugging purposes, here the option to plot the pattern origin axes into each image. This is useful to check if the detections and conversions are correct.
-            for image, rotation, translation in zip(os.listdir(im_dir), rvecs, tvecs):
-                plotting.plot_axes_on_img(im_dir + image, mtx, dist, rotation, translation) # plot the axes of the first detected tag into each image
+            for image, rotation, translation in zip(used_images, rvecs, tvecs):
+                plotting.plot_axes_on_img(im_dir+'/'+image, mtx, dist, rotation, translation) # plot the axes of the first detected tag into each image
 
         # the rotation and translation vectors bring the pattern from object frame to camera frame, that's the same as the pose of the pattern origin given in the camera frame
         homogeneous_transforms = [opencv_conversions.rodrigues_rvec_tvec_to_homogeneous(rvec, tvec) for rvec, tvec in zip(rvecs, tvecs)]
@@ -96,10 +99,13 @@ class CamCalibration:
         self.matrix = mtx
         self.distortion = dist
 
+        if plot and plotting is not None:
+            plotting.plot_transforms(cam_in_world)
+
         return resolution, mtx, dist, cam_in_world, used_images # image resolution, camera matrix, distortion coefficients, 4x4 homogeneous transforms of the camera poses in world frame, also a list of which images were suitable for calibration and thus poses were estimated
     
 
-    def colmap_calibration(self, im_dir=None, cam_model='OPENCV'):
+    def colmap_calibration(self, im_dir=None, cam_model='OPENCV', force_rerun=False):
         """
         COLMAP camera calibration. Intended for calibration intrinsics and extrinsics together.
 
@@ -123,7 +129,7 @@ class CamCalibration:
             # If a sparse reconstruction model already exist in the folder, it does not run again. But you can force it to run again by setting force_rerun=True.
         if im_dir is None:
             im_dir = self.im_dir
-        colmap_wrapper.gen_poses(basedir=im_dir, match_type='exhaustive_matcher', model_type=cam_model, force_rerun=False)
+        colmap_wrapper.gen_poses(basedir=im_dir, match_type='exhaustive_matcher', model_type=cam_model, force_rerun=force_rerun)
 
         # Retrieve the camera parameters from the colmap output
         camerasfile = os.path.join(self.im_dir, 'sparse/0/cameras.bin')
@@ -149,6 +155,6 @@ class CamCalibration:
 if __name__ == '__main__':
     pass
     # Run the calibration routine
-    #cc = CamCalibration('EOS01', '/home/kh790/data/calibration_imgs/')#cam_calib/2024-05-16_16-41-12')
-    # cc.colmap_calibration()
-    #cc.april_tag_calibration(lower_requirements=True)
+    cc = CamCalibration('EOS01','/home/karo/ws/data/calibration_images/intrinsics_calib/2024-05-16_16-41-12')#cam_calib/2024-05-16_16-41-12')
+    #cc.colmap_calibration(cam_model='FULL_OPENCV', force_rerun=True)
+    cc.april_tag_calibration(lower_requirements=True)

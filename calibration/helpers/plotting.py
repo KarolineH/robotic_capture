@@ -23,12 +23,12 @@ def plot_transforms(transforms):
 
 def plot_axes_on_img(img_file, cam_mtx, dist_coeff, rotation, translation):
     '''
-    This function plots the axes of the AprilTag pattern origin (the first tag's corner) onto the image. This is useful for debugging.
+    This function plots the axes of the AprilTag pattern origin (the top-left tag's corner) onto the image. This is useful for debugging.
     Inputs: an image file, camera matrix, distortion coefficients, rotation and translation vectors of the pattern origin given in the camera frame.
     '''
     
     img = cv2.imread(img_file) # row, column
-    im2 = cv2.drawFrameAxes(img, cam_mtx, dist_coeff, rotation, translation, 0.1, 6)
+    im2 = cv2.drawFrameAxes(img, cam_mtx, dist_coeff, rotation, translation, 0.3, 6)
 
     # rescale the image to fit on screen
     scale_percent = 15 # percent of original size
@@ -38,6 +38,28 @@ def plot_axes_on_img(img_file, cam_mtx, dist_coeff, rotation, translation):
     im2 = cv2.resize(im2, dim, interpolation = cv2.INTER_AREA)
 
     cv2.imshow("Image", im2)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    return
+
+def plot_detected_april_corners(img_file, coords):
+    '''
+    This function plots the detected AprilTag corners onto the image. This is useful for debugging.
+    Inputs: an image file, the detected corners of the AprilTag.
+    '''
+    
+    img = cv2.imread(img_file) # row, column
+    for coord in coords:
+        cv2.circle(img, (int(coord[0]), int(coord[1])), 25, (0, 0, 255), -1)
+
+    # rescale the image to fit on screen
+    scale_percent = 15 # percent of original size
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
+    dim = (width, height)
+    img = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+
+    cv2.imshow("Image", img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     return
