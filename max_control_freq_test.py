@@ -16,3 +16,10 @@ with k_util.DeviceConnection.createTcpConnection(args) as router:
         action = data_io.create_cartesian_action(pose=pose)
         success &= IF.execute_action(action)
         print(time.time() - starting_time)
+
+    # can also send a twist command
+        # set speeds in cartesian frame
+        # wait, stop when done
+    # can also send joint speeds
+        # set speed in joint frame
+        # wait, stop when done
