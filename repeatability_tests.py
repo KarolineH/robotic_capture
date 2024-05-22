@@ -185,9 +185,10 @@ def analyse_pose_errors(im_dir, cam_id):
     all_imgs = sorted([f for f in os.listdir(im_dir) if f.endswith('.JPG')])
     indices = np.asarray([np.where(np.array(all_imgs)==name) for name in used]).flatten()
     cam_in_base = poses[indices,:] # [x,y,z,theta_x,theta_y,theta_z]
+    cam_in_base_mat = conversion.robot_poses_as_htms(cam_in_base) # convert to homogeneous transformation matrices
+    result1 = analyse_relatvive_tf_errors(cam_in_base, cam_in_pattern)
 
     # multiply (transform from camera to robot base frame) x (transform from robot base to world frame) to get the (transform from camera to world frame)
-    cam_in_base_mat = conversion.robot_poses_as_htms(cam_in_base) # convert to homogeneous transformation matrices
     cam_poses_from_robot = t @ cam_in_base_mat # poses of the camera, given in the pattern frame, as derived from the robot's proprioception measurements
     cam_poses_from_images = cam_in_pattern # poses of the camera, given in the pattern frame, as derived from the AprilTag locations in the images
 
@@ -215,6 +216,31 @@ def analyse_pose_errors(im_dir, cam_id):
     with open(os.path.join(im_dir, 'rotation_errors.npy'), 'wb') as f:
         np.save(f, rot_err2)
     plot_pose_errors(tl_err, rot_err2)
+    return
+
+def relative_tf_between_poses(T1, T2):
+    # Inverse of the first pose
+    T1_inv = np.linalg.inv(T1)
+    # Relative transform from T1 to T2
+    relative_transform = np.dot(T1_inv, T2)
+    return relative_transform
+
+def analyse_relatvive_tf_errors(robot_tfs, tag_tfs):
+    robot_relative = np.asarray([relative_tf_between_poses(robot_tfs[i], robot_tfs[i+1]) for i in range(len(robot_tfs)-1)])
+    tag_relative = np.asarray([relative_tf_between_poses(tag_tfs[i], tag_tfs[i+1]) for i in range(len(tag_tfs)-1)])
+    diff = robot_relative - tag_relative
+    translation_axes_avg_error = np.mean(diff[:,:3,3], axis=0)
+    translation_euclid_avg_error = np.mean([np.linalg.norm(diff[i,:3,3]) for i in range(diff.shape[0])])
+
+    rotation_diff = np.asarray([robot_relative[i,:3,:3].dot(tag_relative[i,:3,:3].T) for i in range(diff.shape[0])])
+    rotation_avg_error = [np.linalg.norm(cv2.Rodrigues(rotation_diff[i])[0]) for i in range(diff.shape[0])]
+    np.mean(rotation_avg_error, axis=0)
+
+    trace = np.asarray(np.trace(rotation_diff[i]) for i in range(diff.shape[0])) 
+    trace = min(3.0, max(-1.0, trace))
+    angle_diff = np.arccos((trace - 1.0) / 2.0)
+    # Convert angle to degrees
+    angle_diff_deg = np.degrees(angle_diff)
     return
 
 def plot_pose_errors(tl_err, rot_err):
@@ -314,21 +340,13 @@ def plot_errors_from_files(im_dir):
 
 
 def main(cam_id='EOS01'):
-    '''
-    Ideally run this first part using Python 3.8 - the Kinova Kortex API has not been updated beyond that yet.
-    '''
     # Take measurements
     #im_dir = set_vs_measured_states()
     # alternatively specify a previous measurement set
-    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+    im_dir = '/home/karo/ws/data/calibration_images/repeat_test'#'/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
 
-
-    '''
-    Ideally, run this part using Python 3.10
-    Some plots won't display if using earlier versions of Python, because the Pytransform3D library is not compatible with earlier versions.
-    '''
     # analyse_joint_errors(im_dir)
-    # analyse_pose_errors(im_dir, cam_id)
+    analyse_pose_errors(im_dir, cam_id)
     plot_errors_from_files(im_dir)
 
 if __name__ == "__main__":

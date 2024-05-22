@@ -23,6 +23,29 @@ def read_action_from_file(filename):
         return
     return action
 
+def raw_state_sequence_from_file(filename):
+    '''
+    Reads a sequence of joint states from a json file.
+    Does NOT configure robot-readable actions, but returns the raw sequence of joint angles.
+    '''
+    f = open(filename)
+    data = json.load(f)
+    sequence_data = data['sequences']['sequence'][0]['tasks']
+    length = len(sequence_data)
+    output = []
+    for task in sequence_data:
+        if next(iter(task['action'])) == 'reachPose':
+            print('WARNING: Cartesian pose data found in sequence, was expecting joint angles. Skipping entry.')
+
+        elif next(iter(task['action'])) == 'applicationData':
+            state_data = task['action']['reachJointAngles']['jointAngles']['jointAngles']
+            state_data = sorted(state_data, key=lambda x: x["jointIdentifier"]) # sort by joint in ascending order
+            angles = [item["value"] for item in state_data] # extract the angles as a list
+            output.append(angles)
+
+    states = np.asarray(output)
+    return states
+
 def format_pose_action(data):
     '''
     Creates a cartesian action using data read from a json file.
