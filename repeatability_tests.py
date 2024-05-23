@@ -40,8 +40,9 @@ def set_vs_measured_states():
 
     # load the movement sequence
     actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-    sequence, action_list = data_io.read_action_from_file(actions_dir + '/calibration_sequence_44.json')
-    skip_capture_at = [0,45] # first and last pose
+    sequence, action_list = data_io.read_action_from_file(actions_dir + "/orienting the robot's new workspace for caliibration.json")
+    rest_position = data_io.read_action_from_file(actions_dir + "/REST01.json")
+    ready_position = data_io.read_action_from_file(actions_dir + "/Camera UP position.json")
 
     # prep the camera
     capture_params=[32,'AUTO','AUTO',True]
@@ -55,8 +56,8 @@ def set_vs_measured_states():
         success = True
 
         # double check that the robot starts out in its safe resting position
-        rest_action = data_io.read_action_from_file(actions_dir + "/rest_on_foam_cushion.json")
-        success &= IF.execute_action(rest_action)
+        success &= IF.execute_action(rest_position)
+        success &= IF.execute_action(ready_position) # reach the starting position
 
         errors_overall = []
         timesteps_overall = []
@@ -87,17 +88,18 @@ def set_vs_measured_states():
                 errors_by_speed.append(errors_by_state) # [states x measurements x joints]
                 timesteps_by_speed.append(timesteps_by_state)
 
-                if i not in skip_capture_at:
-                    # unless it is a state where we can skip taking a photo, such as a manouvering or starting pose, take a photo
-                    time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
-                    cam_pose = IF.get_pose()
-                    poses_by_speed.append(cam_pose)
-                    path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
+                time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
+                cam_pose = IF.get_pose()
+                poses_by_speed.append(cam_pose)
+                path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
             errors_overall.append(errors_by_speed)
             timesteps_overall.append(timesteps_by_speed)
             poses_overall.append(poses_by_speed)
-        
+
+        success &= IF.execute_action(ready_position)
+        success &= IF.execute_action(rest_position)
+
         errors = np.asarray(errors_overall) # shape [speeds,states,measurements,joints]
         timesteps = np.asarray(timesteps_overall) # shape [speeds,states,measurements,joints]
 
@@ -186,7 +188,7 @@ def analyse_pose_errors(im_dir, cam_id):
     indices = np.asarray([np.where(np.array(all_imgs)==name) for name in used]).flatten()
     cam_in_base = poses[indices,:] # [x,y,z,theta_x,theta_y,theta_z]
     cam_in_base_mat = conversion.robot_poses_as_htms(cam_in_base) # convert to homogeneous transformation matrices
-    result1 = analyse_relatvive_tf_errors(cam_in_base, cam_in_pattern)
+    result1 = analyse_relatvive_tf_errors(cam_in_base_mat, cam_in_pattern)
 
     # multiply (transform from camera to robot base frame) x (transform from robot base to world frame) to get the (transform from camera to world frame)
     cam_poses_from_robot = t @ cam_in_base_mat # poses of the camera, given in the pattern frame, as derived from the robot's proprioception measurements
@@ -226,8 +228,8 @@ def relative_tf_between_poses(T1, T2):
     return relative_transform
 
 def analyse_relatvive_tf_errors(robot_tfs, tag_tfs):
-    robot_relative = np.asarray([relative_tf_between_poses(robot_tfs[i], robot_tfs[i+1]) for i in range(len(robot_tfs)-1)])
-    tag_relative = np.asarray([relative_tf_between_poses(tag_tfs[i], tag_tfs[i+1]) for i in range(len(tag_tfs)-1)])
+    robot_relative = np.asarray([relative_tf_between_poses(robot_tfs[i], robot_tfs[0]) for i in range(len(robot_tfs)-1)])
+    tag_relative = np.asarray([relative_tf_between_poses(tag_tfs[i], tag_tfs[0]) for i in range(len(tag_tfs)-1)])
     diff = robot_relative - tag_relative
     translation_axes_avg_error = np.mean(diff[:,:3,3], axis=0)
     translation_euclid_avg_error = np.mean([np.linalg.norm(diff[i,:3,3]) for i in range(diff.shape[0])])
@@ -236,12 +238,19 @@ def analyse_relatvive_tf_errors(robot_tfs, tag_tfs):
     rotation_avg_error = [np.linalg.norm(cv2.Rodrigues(rotation_diff[i])[0]) for i in range(diff.shape[0])]
     np.mean(rotation_avg_error, axis=0)
 
-    trace = np.asarray(np.trace(rotation_diff[i]) for i in range(diff.shape[0])) 
-    trace = min(3.0, max(-1.0, trace))
+    trace = np.asarray([np.trace(rotation_diff[i]) for i in range(diff.shape[0])])
+    trace[np.where(trace>3.0)] = 3.0
+    trace[np.where(trace<-1.0)] = -1.0
     angle_diff = np.arccos((trace - 1.0) / 2.0)
     # Convert angle to degrees
     angle_diff_deg = np.degrees(angle_diff)
-    return
+    print(f'Average translation error along the axes: {translation_axes_avg_error}')
+    print(f'Max translation error along the axes: {np.max(diff[:,:3,3], axis=0)}')
+    print(f'Average translation error in Euclidean space: {translation_euclid_avg_error}')
+    print(f'Max euclidean translation error: {np.max([np.linalg.norm(diff[i,:3,3]) for i in range(diff.shape[0])])} meters')
+    print(f'Average rotation error: {np.mean(angle_diff_deg)} degrees')
+    print(f'Max rotation error: {np.max(angle_diff_deg)} degrees')
+    return True
 
 def plot_pose_errors(tl_err, rot_err):
     max_err = np.ceil(np.max(np.max(abs(tl_err), axis=0))*1000)/1000
@@ -343,9 +352,9 @@ def main(cam_id='EOS01'):
     # Take measurements
     #im_dir = set_vs_measured_states()
     # alternatively specify a previous measurement set
-    im_dir = '/home/karo/ws/data/calibration_images/repeat_test'#'/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-05-23_10-49-27'#'/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
 
-    # analyse_joint_errors(im_dir)
+    #analyse_joint_errors(im_dir)
     analyse_pose_errors(im_dir, cam_id)
     plot_errors_from_files(im_dir)
 

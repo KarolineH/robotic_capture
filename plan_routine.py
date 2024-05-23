@@ -24,7 +24,7 @@ def show_sample_states():
         poses = []
         for state in states:
             try:
-                pose = base.ComputeForwardKinematics(states)
+                pose = base.ComputeForwardKinematics(state)
                 poses.append(pose)
             except KServerException as ex:
                 print("Error_code:{} , Sub_error_code:{} ".format(ex.get_error_code(), ex.get_error_sub_code()))
@@ -72,8 +72,8 @@ def generate_poses():
     space_limits_min = np.array([-1.1, -1.1, -1.1])  # Cartesian space limits
     space_limits_max = np.array([1.1, 1.1, 1.1])
 
-    no_go_zones_min = np.array([-2, -0.2, -2], [-2, -0.2, -2])  # No-go zones, rectangular exclusion zones
-    no_go_zones_max = np.array([-0, 0.2, 2], [-0, 0.2, 2])
+    no_go_zones_min = np.array([[-2, -0.2, -2], [-2, -0.2, -2]])  # No-go zones, rectangular exclusion zones
+    no_go_zones_max = np.array([[-0, 0.2, 2], [-0, 0.2, 2]])
 
     # Generate points on the sphere
     sphere_points = np.asarray(fibonacci_sphere(num_points))
@@ -88,7 +88,13 @@ def generate_poses():
     for point in total_points:
         if np.any(point <= space_limits_min) or np.any(point >= space_limits_max):
             continue
-        if np.all(point >= exclude_cube_min) and np.all(point <= exclude_cube_max):
+        for ngmin, ngmax in zip(no_go_zones_min, no_go_zones_max):
+            in_ng = False
+            if np.all(point >= ngmin) and np.all(point <= ngmax):
+                # if the coordinate lies within all bounds of a no-go zone, it is invalid
+                in_ng = True
+        if in_ng:
+            # skip this point if it is in any of the no-go zones
             continue
         valid_points.append(point)
     valid_points = np.asarray(valid_points)
@@ -130,6 +136,6 @@ def plot_points(points):
 
 if __name__ == '__main__':
     poses = generate_poses()
-    print(poses)
-    # poses = show_sample_states()
+    # print(poses)
+    #poses = show_sample_states()
     # print(poses)
