@@ -41,7 +41,12 @@ class CamCalibration:
         # x=red, y=green, z=blue
         # We use the same convention throughout this function.
 
-        flag_dict = {'OPENCV': 0, 'FULL_OPENCV': cv2.CALIB_RATIONAL_MODEL}
+        flag_dict = {'OPENCV': 0, 'FULL_OPENCV': cv2.CALIB_RATIONAL_MODEL, 'SIMPLE_PINHOLE': cv2.CALIB_FIX_ASPECT_RATIO + cv2.CALIB_ZERO_TANGENT_DIST + cv2.CALIB_FIX_K1 + cv2.CALIB_FIX_K2 + cv2.CALIB_FIX_K3 + cv2.CALIB_FIX_K4 + cv2.CALIB_FIX_K5 + cv2.CALIB_FIX_K6}
+
+        # Aspect ratio (optional, set to 1.0 for square pixels)
+        if cam_model == 'SIMPLE_PINHOLE' and cam_mat is None:
+            cam_mat = np.eye(3, dtype=np.float64) # to fix the aspect ratio to 1.0
+
 
         plot = False # useful for debugging, set to True to plot the axes of the first detected tag into each image
         if im_dir is None:
@@ -157,4 +162,5 @@ if __name__ == '__main__':
     # Run the calibration routine
     cc = CamCalibration('EOS01','/home/karo/ws/data/calibration_images/intrinsics_calib/2024-05-16_16-41-12')#cam_calib/2024-05-16_16-41-12')
     #cc.colmap_calibration(cam_model='FULL_OPENCV', force_rerun=True)
-    cc.april_tag_calibration(lower_requirements=True)
+    out = cc.april_tag_calibration(lower_requirements=True, cam_model='SIMPLE_PINHOLE')
+    print(out)

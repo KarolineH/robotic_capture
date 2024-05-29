@@ -15,6 +15,7 @@ def create_pattern(tag_size=0.03, tag_spacing=0.015, tag_layout=np.array([4,5]))
     # All tags in the pattern are of the same tag family to distinguish them from other tags in the environment.
     # Measurements are provided in meters.
     # Layout is provided in [rows x columns]
+    # old pattern: tag_size=0.0298235294118, tag_spacing=0.0149117647058, tag_layout=np.array([4,6]
     spacing = tag_spacing + tag_size
     corner_array = np.array([[i * spacing, j * spacing, 0] for j in range(tag_layout[0]) for i in range(tag_layout[1])], dtype=np.float32)
     return corner_array
