@@ -11,7 +11,10 @@ def save_intrinsics_to_yaml(out_file, cam_id, model, frame_size, matrix, distort
     '''
 
     # Find the number of distortion coefficients, this is the number of elements after which all remaining elements are zero.
-    nr_dist_coeffs = np.max(np.where(distortion!=0)[1]) + 1
+    if np.max(distortion) == 0:
+        nr_dist_coeffs = 0
+    else:
+        nr_dist_coeffs = np.max(np.where(distortion!=0)[1]) + 1
     
     assert matrix.shape == (3, 3)
     data = {

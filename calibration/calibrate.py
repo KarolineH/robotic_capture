@@ -69,7 +69,7 @@ class CamCalibration:
             # This line (above) sometimes causes a segmentation fault. This is not caught here.
             # If the warning "too many borders in contour_detect (max of 32767!)" is shown, try setting the input lower_requirements=True
 
-            if len(results) > 3: # OPENCV requires at least 4 detected location in an image for camera calibration
+            if len(results) > 5: # OPENCV requires at least 6 detected locations in an image for intrinsic + extrinsic camera calibration
                 detected_ids = np.asarray([r.tag_id for r in results])
                 valid_detected_ids = detected_ids[np.where(detected_ids <=corner_array.shape[0])] # only use detected tags that are part of the pattern
                 image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)

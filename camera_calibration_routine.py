@@ -142,17 +142,19 @@ def calibrate(cam_id, calib_file='./camera_info.yaml', im_dir='/home/kh790/data/
 
 def main(cam_id='EOS01', cam_model='OPENCV'):
     # First, run the data recording routine. Please be careful, this is a potentially dangerous operation. Be aware of your surroundings. The robot has no collision detection or obstacle awareness in this mode.
-    im_dir = record_data(use_hdmi_stream=False, burst=False)
+    #im_dir = record_data(use_hdmi_stream=False, burst=False)#
+    im_dir = '/home/kh790/data/calibration_imgs/manual_calib/2024-05-30_14-08-50'
 
     # Then use the recorded data to calibrate the camera (or optionally use a different set of images and skip the recording routine)
     # Specify a target file, where the calibration parameters will be saved
     # By default this is named by the timestamp assigned to the image directory, optionally specify a different location here
     stamp = im_dir.split('/')[-1]
     calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config' # default location is the config directory of this package
-    target_file = calibr_dir + f'/camera_info_{cam_id}_{stamp}.yaml'
+    target_file = calibr_dir + f'/camera_info_{cam_id}_{stamp}_{cam_model}.yaml'
 
     # Perform the calibration
     __, matrix, distortion, __, __ = calibrate(cam_id, calib_file=target_file, im_dir=im_dir, cam_model=cam_model)
 
 if __name__ == "__main__":
+    # camera model options: 'OPENCV', 'SIMPLE_PINHOLE', 'FULL_OPENCV'
     main(cam_id='EOS01', cam_model = 'FULL_OPENCV')
