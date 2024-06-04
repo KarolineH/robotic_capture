@@ -41,8 +41,8 @@ class CamCalibration:
         # x=red, y=green, z=blue
         # We use the same convention throughout this function.
 
-        flag_dict = {'OPENCV': 0, 'FULL_OPENCV': cv2.CALIB_RATIONAL_MODEL, 'SIMPLE_PINHOLE': cv2.CALIB_FIX_ASPECT_RATIO + cv2.CALIB_ZERO_TANGENT_DIST + cv2.CALIB_FIX_K1 + cv2.CALIB_FIX_K2 + cv2.CALIB_FIX_K3 + cv2.CALIB_FIX_K4 + cv2.CALIB_FIX_K5 + cv2.CALIB_FIX_K6}
-
+        flag_dict = {'OPENCV': cv2.CALIB_FIX_K3, 'FULL_OPENCV': cv2.CALIB_RATIONAL_MODEL, 'SIMPLE_PINHOLE': cv2.CALIB_FIX_ASPECT_RATIO + cv2.CALIB_ZERO_TANGENT_DIST + cv2.CALIB_FIX_K1 + cv2.CALIB_FIX_K2 + cv2.CALIB_FIX_K3 + cv2.CALIB_FIX_K4 + cv2.CALIB_FIX_K5 + cv2.CALIB_FIX_K6}
+        
         # Aspect ratio (optional, set to 1.0 for square pixels)
         if cam_model == 'SIMPLE_PINHOLE' and cam_mat is None:
             cam_mat = np.eye(3, dtype=np.float64) # to fix the aspect ratio to 1.0
