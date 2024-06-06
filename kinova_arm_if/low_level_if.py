@@ -43,12 +43,11 @@ class LL_example:
         self.router_real_time = router_real_time
         self.base = BaseClient(self.router)
         self.base_cyclic = BaseCyclicClient(self.router_real_time)
-        self.control_config = ControlConfigClient(router)
-        self.previous_control_mode = self.control_config.GetControlMode()
-        control_mode_info = ControlConfig_pb2.ControlModeInformation()
-        control_mode_info.control_mode = ControlConfig_pb2.CARTESIAN_VELOCITY
-
-
+        
+        # self.control_config = ControlConfigClient(router)
+        # self.previous_control_mode = self.control_config.GetControlMode()
+        # control_mode_info = ControlConfig_pb2.ControlModeInformation()
+        # control_mode_info.control_mode = ControlConfig_pb2.CARTESIAN_VELOCITY
 
         self.proportional_gain = proportional_gain
 

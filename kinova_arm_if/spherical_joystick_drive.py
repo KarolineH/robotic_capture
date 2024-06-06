@@ -46,17 +46,15 @@ class SphereTraverser:
         self.ACTION_TIMEOUT_DURATION = 20
 
         # Create required services
+        self.router = router
+        self.router_real_time = router_real_time
         device_manager = DeviceManagerClient(router)
-        
-        self.actuator_config = ActuatorConfigClient(router)
         self.base = BaseClient(router)
         self.base_cyclic = BaseCyclicClient(router_real_time)
-        self.control_config = ControlConfigClient(router)
-        self.control_config.SetC
 
         self.base_command = BaseCyclic_pb2.Command()
         self.base_feedback = BaseCyclic_pb2.Feedback()
-        self.base_custom_data = BaseCyclic_pb2.CustomData()
+        self.actuator_config = ActuatorConfigClient(router)
 
         # Detect all devices
         device_handles = device_manager.ReadAllDevices()
@@ -155,15 +153,16 @@ class SphereTraverser:
 
             # Init command frame
             for x in range(self.actuator_count):
-                self.base_command.actuators[x].flags = 0 # servoing
+                self.base_command.actuators[x].flags = 1 # servoing
                 self.base_command.actuators[x].position = self.base_feedback.actuators[x].position
-                self.base_command.actuators[x].velocity = 0.0
+                # self.base_command.actuators[x].velocity = 0.0
 
             # Set arm in LOW_LEVEL_SERVOING
             base_servo_mode = Base_pb2.ServoingModeInformation()
             base_servo_mode.servoing_mode = Base_pb2.LOW_LEVEL_SERVOING
+            time.sleep(0.5)
             self.base.SetServoingMode(base_servo_mode)
-
+            
             # Send first frame
             self.base_feedback = self.base_cyclic.Refresh(self.base_command, 0, self.sendOption)
 
@@ -171,7 +170,7 @@ class SphereTraverser:
             control_mode_message.control_mode = ActuatorConfig_pb2.ControlMode.Value('POSITION') # 1 POSITION, 2 VELOCITY
 
             for i in range(6):
-                self.SendCallWithRetry(self.actuator_config.SetControlMode, 5, control_mode_message, i+1) # set each actuator to the same control mode
+                self.SendCallWithRetry(self.actuator_config.SetControlMode, 3, control_mode_message, i+1) # set each actuator to the same control mode
 
             # Init cyclic thread
             self.cyclic_t_end = t_end
@@ -194,24 +193,23 @@ class SphereTraverser:
 
         initial_state = [actuator.position for actuator in self.base_feedback.actuators]
         state = initial_state
+
         t_now = time.time()
         t_cyclic = t_now  # cyclic time
         t_stats = t_now  # print  time
         t_init = t_now  # init   time
 
-        print("Running torque control example for {} seconds".format(self.cyclic_t_end))
-
+        durations = []
+        print("Running example for {} seconds".format(self.cyclic_t_end))
         while not self.kill_the_thread:
             t_now = time.time()
+            durations.append(t_now - t_cyclic)
 
             # Cyclic Refresh
             if (t_now - t_cyclic) >= t_sample:
                 t_cyclic = t_now
 
-                # TODO: CAn we assume that this is executed at the expected rate?
-                # Can we get a time-step from the base rather than the PC?
-
-                # TODO: The main meat is here:
+                # TODO: The main meat goes here
                 # check the input (button press, joystick, torque...)
                 # then compute the desired cartesian pose
                 # then translate to desired joint state
