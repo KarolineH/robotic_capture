@@ -3,6 +3,8 @@ import cv2
 from pytransform3d.transform_manager import TransformManager
 
 def plot_transforms(transforms):
+    import matplotlib
+    matplotlib.use('Qt5Agg')
     tm = TransformManager()
     if len(transforms.shape) == 3:
         print('Transforms shape:', transforms.shape)

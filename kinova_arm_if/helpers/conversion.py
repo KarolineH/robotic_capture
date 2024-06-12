@@ -49,7 +49,7 @@ def quat_to_euler(qx=0, qy=0, qz=0, qw=0):
 
 def robot_poses_as_htms(poses):
     '''
-    The Kortex API gives robot poses in the format [x,y,z,theta_x,theta_y,theta_z]
+    The Kortex API gives robot poses in the format [x,y,z,theta_x,theta_y,theta_z] (in degrees)
     This function converts an array of poses (nx6) to an array of 4x4 homogeneous transformation matrices (nx4x4)
     '''
 
