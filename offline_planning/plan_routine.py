@@ -138,7 +138,7 @@ def plot_points(points):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     x_coords, y_coords, z_coords = zip(*points)
-    ax.scatter(x_coords, y_coords, z_coords, s=1)
+    ax.scatter(x_coords, y_coords, z_coords, s=20)
 
     # Set the aspect ratio to be equal
     ax.set_box_aspect([1,1,1])
@@ -221,21 +221,13 @@ def get_states():
     wrist_poses = np.asarray([res for res in results[0][4]])
     cam_poses = np.matmul(wrist_poses, t_wrist_to_cam[0])
     #plotting.plot_transforms(cam_poses)
+    plot_points(cam_poses[:, :3, 3])
 
 
-    save_pickle('offline_planning/pose_exploration.pkl', results)
+    save_pickle('offline_planning/04-08-07.pkl', results)
 
     # filter out any poses that would dip the camera below 10cm z (height), because of the table obstructing the workspace 
 
-
-
-
-
-
-
-if __name__ == '__main__':
-    #get_states()
-    explore_reachables()
 
     # # Sort joint states to minimize total changes between them
     # joint_states = np.array(joint_states)
@@ -249,3 +241,14 @@ if __name__ == '__main__':
 
     # sorted_joint_states = joint_states[sorted_indices]
     # return sorted_joint_states
+
+
+
+if __name__ == '__main__':
+    #get_states()
+    #explore_reachables()
+
+    results = load_pickle('offline_planning/04-08-07.pkl')
+    wrist_poses = np.asarray([res for res in results[0][4]])
+    cam_poses = np.matmul(wrist_poses, t_wrist_to_cam[0])
+    plot_points(cam_poses[:, :3, 3])
