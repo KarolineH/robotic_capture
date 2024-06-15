@@ -59,6 +59,10 @@ def main(out_dir, capture_params=[32,'AUTO','AUTO',False]):
                         f.write(f"{joint_state.tolist()}\n")
                     with open(poses_file, 'a') as f:
                         f.write(f"{cam_pose.tolist()}\n")
+                    # TODO: Change this to use numpy savetxt
+                    # with open("test.txt", "ab") as f:
+                    #   np.savetxt(f, a)
+                    #    f.write("\n") # add a newline
                         
                 if q == 'q': # q for quit
                     running = False
