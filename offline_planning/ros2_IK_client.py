@@ -16,13 +16,13 @@ class IKClient(Node):
             self.get_logger().info('service not available, waiting again...')
         self.req = GetPositionIK.Request()
 
-    def send_request(self, x ,y, z, qx, qy, qz, qw):
+    def send_request(self, x ,y, z, qx, qy, qz, qw, link='dslr_body_link'):
         '''
         Inputs: Desired end-effector pose given as translation (x,y,z) and quaternion (qx,qy,qz,qw).
         '''
         
         self.req.ik_request.group_name = 'manipulator'
-        #self.req.ik_request.ik_link_name = 'DSLR_cam'
+        self.req.ik_request.ik_link_name = link
         self.req.ik_request.pose_stamped.pose.position.x = x
         self.req.ik_request.pose_stamped.pose.position.y = y
         self.req.ik_request.pose_stamped.pose.position.z = z
@@ -30,6 +30,7 @@ class IKClient(Node):
         self.req.ik_request.pose_stamped.pose.orientation.y = qy
         self.req.ik_request.pose_stamped.pose.orientation.z = qz
         self.req.ik_request.pose_stamped.pose.orientation.w = qw
+        self.req.ik_request.avoid_collisions = True
 
         self.future = self.cli.call_async(self.req)
         rclpy.spin_until_future_complete(self, self.future)
@@ -40,7 +41,7 @@ class IKClient(Node):
 def main(args=None):
     rclpy.init(args=args)
     ikcli = IKClient()
-    response = ikcli.send_request(0.5,0.5,0.5,0.0,0.0,0.0,1.0)
+    response = ikcli.send_request(0.19157, 0.043617, 0.34076, 0.48835, 0.51191, -0.50606, 0.49332)
     ikcli.destroy_node()
     rclpy.shutdown()
 
