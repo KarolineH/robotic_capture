@@ -9,6 +9,7 @@ import numpy as np
 from kinova_arm_if.helpers import conversion as conv
 from calibration.helpers import plotting
 import util 
+from scipy.spatial import distance_matrix
 
 # t_wrist_to_cam = conv.robot_poses_as_htms(np.array([-0.00034790886457611943, 0.04226343540493114, 0.08396112164677054, np.degrees(-1.581624895332124), np.degrees(-0.003688590448812868), np.degrees(-0.000676321102353462)])) #[x,y,z,theta_x,theta_y,theta_z] (in degrees)
 # t_cam_to_wrist = conv.invert_transform(t_wrist_to_cam[0])
@@ -135,13 +136,13 @@ def compute_reachables(origins, radii, nr_of_queried_points=100, rotation_increm
                         print("Error code:", error_code)
 
             results.append((origin, radius, joint_states, reachable_poses))
-            util.append_to_log('offline_planning/ik_log_90.txt', [origin.tolist(), radius, [entry for entry in joint_states], [entry.tolist() for entry in reachable_poses]])
+            util.append_to_log('offline_planning/ik_log_180.txt', [origin.tolist(), radius, [entry for entry in joint_states], [entry.tolist() for entry in reachable_poses]])
     return results
 
 
 def explore_reachability(recompute=False):
     if recompute:
-        origins = np.array([[y, 0, z] for y in np.linspace(0,1,21) for z in np.linspace(0,1.2,13)])
+        origins = np.array([[0, y, z] for y in np.linspace(-1,0,21) for z in np.linspace(0,1.2,13)])
         radii = np.array(np.linspace(0.7,1,7))#np.linspace(0.7)
         nr_of_queried_points = 100
         results = compute_reachables(origins, radii, nr_of_queried_points, rotation_increment=0.35)
@@ -153,23 +154,21 @@ def explore_reachability(recompute=False):
     util.plot_yzr_fit(results)
     return
 
-def get_states(origin=[0,0.4,0.8], radius=0.7, n=1000):
-
+def get_states(origin=[0,0.4,0.8], radius=0.7, n=1000, rdelta=0.1):
     origin = np.asarray([origin])
     radius = np.asarray([radius])
     results = compute_reachables(origin, radius, n, rotation_increment=0.2)
-    # results have the format (origin, radius, indeces of IK-reachable poses, joint_states, poses)
+    # results have the format (origin, radius, joint_states, poses)
 
-    cam_poses = np.asarray([res for res in results[0][4]])
-
+    cam_poses = np.asarray([res for res in results[0][-1]])
+    joint_states = np.asarray([res for res in results[0][-2]])
     #plotting.plot_transforms(cam_poses)
-    # util.plot_points(cam_poses[:, :3, 3])
-    # util.save_pickle('offline_planning/04-08-07.pkl', results)
+    #util.plot_points(cam_poses[:, :3, 3])
+    util.save_pickle(f'offline_planning/{origin[0]}_{radius[0]}_{n}_{rdelta}.pkl', results)
 
-    # filter out any poses that would dip the camera below 10cm z (height), because of the table obstructing the workspace 
     # # Sort joint states to minimize total changes between them
-    # joint_states = np.array(joint_states)
-    # dist_matrix = euclidean_distances(joint_states, joint_states)
+    dists = distance_matrix(joint_states, joint_states)
+
     # sorted_indices = [0]
     # for _ in range(len(joint_states) - 1):
     #     last_index = sorted_indices[-1]
@@ -183,11 +182,6 @@ def get_states(origin=[0,0.4,0.8], radius=0.7, n=1000):
 
 
 if __name__ == '__main__':
-    #results = util.load_log('offline_planning/ik_log.txt')
-    #get_states()
+    #results = get_states([0.19195185,-0.078321,-0.014656995], 0.7, 1000, 0.1)
+    #results = util.load_log('offline_planning/ik_log_90.txt')
     explore_reachability(recompute=True)
-
-    # results = util.load_pickle('offline_planning/04-08-07.pkl')
-    # wrist_poses = np.asarray([res for res in results[0][4]])
-    # cam_poses = np.matmul(wrist_poses, t_wrist_to_cam[0])
-    # util.plot_points(cam_poses[:, :3, 3])
