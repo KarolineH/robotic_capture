@@ -178,45 +178,48 @@ def coordinate(cam_coords, wrist_coords):
 
     # Method 2: Returns both camera<>wrist and base<>pattern transform to anker both in a common world frame
     # From initial tests, this method seems to yield more accurate results
-    R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t)
+    R_base_in_pattern, t_base_in_pattern, R_wrist2cam, t_wrist2cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t)
+    # R_base2world, t_base2world: transforms a point given in the robot (base) frame to the "world" frame, which is the AprilTag pattern origin. The is the same as the robot base pose expressed in the pattern origin frame
+    # R_wrist2cam, t_wrist2cam: transforms a point given in the wrist frame to the camera frame. This is the same as the wrist pose expressed in the camera frame.
 
-    M_cam2wrist_transform = np.zeros((4,4))
-    M_cam2wrist_transform[:3,:3] = R_wrist2cam
-    M_cam2wrist_transform[:3,3] = t_wrist2cam.flatten()
-    M_cam2wrist_transform[3,3] = 1
-    M_wrist2cam_transform = np.linalg.inv(M_cam2wrist_transform) # the transform from the camera to the wrist, or the pose of the camera expressed in the wrist frame
+    base_in_pattern_tf = np.zeros((4,4))
+    base_in_pattern_tf[:3,:3] = R_base_in_pattern
+    base_in_pattern_tf[:3,3] = t_base_in_pattern.flatten()
+    base_in_pattern_tf[3,3] = 1
 
-    R_cam2wrist = M_wrist2cam_transform[:3,:3] # the rotation from the camera frame to the wrist frame, or the rotation of the camera expressed in the wrist frame
-    t_cam2wrist = M_wrist2cam_transform[:3,3] # the translation from the camera frame to the wrist frame, or the translation of the camera expressed in the wrist frame
+    pattern_in_base_tf = np.linalg.inv(base_in_pattern_tf) # the pose of the calibration pattern expressed in the robot base frame
 
-    return R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam
+    wrist_in_cam_tf = np.zeros((4,4))
+    wrist_in_cam_tf[:3,:3] = R_wrist2cam
+    wrist_in_cam_tf[:3,3] = t_wrist2cam.flatten()
+    wrist_in_cam_tf[3,3] = 1
 
-def save_coordination(R,t,Rw=None,tw=None,stamp=''):
+    cam_in_wrist_tf = np.linalg.inv(wrist_in_cam_tf) # the transform from the camera to the wrist frame, or the pose of the camera expressed in the wrist frame
+
+    # R_cam_in_wrist = cam_in_wrist_tf[:3,:3] # the rotation from the camera frame to the wrist frame, or the rotation of the camera expressed in the wrist frame
+    # t_cam_in_wrist = cam_in_wrist_tf[:3,3] # the translation from the camera frame to the wrist frame, or the translation of the camera expressed in the wrist frame
+
+    return cam_in_wrist_tf, pattern_in_base_tf
+
+def save_coordination(cam_tf,pattern_tf=None,stamp=''):
      # save the camera transformation (camera pose expressed in wrist frame) to a yaml file
-    config_path = str(pathlib.Path(__file__).parent.resolve()) + f'/config/frame_transform_{stamp}.yaml'
-    
-    # convert to Euler angles
-    euler = conv.mat_to_euler(R)
-    euler_rad = np.deg2rad(euler)
+    config_path = str(pathlib.Path(__file__).parent.resolve()) + f'/config/dslr_transform_{stamp}.yaml'
 
-    data = {'frame_id': 'cam_frame',
-    'x_translation': float(t[0]),
-    'y_translation': float(t[1]),
-    'z_translation': float(t[2]),
-    'theta_x': float(euler_rad[0]),
-    'theta_y': float(euler_rad[1]),
-    'theta_z': float(euler_rad[2])
+    data = {
+        'frame_id': 'dslr_frame',
+        'parent_frame': 'end_effector_link',
+        'transform': cam_tf.tolist()
     }
     yaml.dump(data, open(config_path, 'w'), default_flow_style=False)
 
-    if Rw is not None and tw is not None:
+    if pattern_tf is not None:
         # If given, also save the world to base (robot base pose expressed in pattern origin frame) transform 
-        pattern_path = str(pathlib.Path(__file__).parent.resolve()) + f'/config/pattern2base_transform_{stamp}.yaml'
-        M = np.zeros((4,4))
-        M[:3,:3] = Rw
-        M[:3,3] = tw.flatten()
-        M[3,3] = 1
-        calibration_io.save_transform_to_yaml(pattern_path, M)
+        pattern_path = str(pathlib.Path(__file__).parent.resolve()) + f'/config/pattern_in_base_tf_{stamp}.yaml'
+        data = {
+        'frame_id': 'calibration_pattern',
+        'parent_frame': 'base_link',
+        'transform': pattern_tf.tolist()}
+        yaml.dump(data, open(pattern_path, 'w'), default_flow_style=False)
     return
 
 
@@ -228,7 +231,7 @@ def main(cam_id = 'EOS01'):
 
     # if the camera intrinsics are already calibrated, you can read those parameters from the most recent calibration file (default)
     # alternatively calibrate intrinsics at the same time as the extrinsics
-    cam_in_world, used = get_camera_poses(data_dir, cam_id, calibrate_intrinsics=False)
+    cam_in_world, used = get_camera_poses(data_dir, cam_id, calibrate_intrinsics=False) # camera poses given in pattern frame
     print(f"{len(used)} images were useable for eye-in-hand calibration")
 
     # Find the wrist poses that correspond to the images which were successfully used for calibration
@@ -238,9 +241,9 @@ def main(cam_id = 'EOS01'):
     wrist_in_robot = np.array(wrist_in_robot)[indices] # [x, y, z, theta_x, theta_y, theta_z]
 
     # finally, perform calibration
-    R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, R_wrist2cam, t_wrist2cam = coordinate(cam_in_world, wrist_in_robot)
+    cam_in_wrist_tf, pattern_in_base_tf = coordinate(cam_in_world, wrist_in_robot)
     # and save the relevant robot chain transform to file
-    save_coordination(R_cam2wrist, t_cam2wrist, R_base2world, t_base2world, stamp=data_dir.split('/')[-1])
+    save_coordination(cam_in_wrist_tf, pattern_in_base_tf, stamp=data_dir.split('/')[-1])
     print("Hand-eye coordination complete.")
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ class CamCalibration:
                 valid_image_coords = image_coords[np.where(detected_ids <=corner_array.shape[0])]
                 world_coords = corner_array[valid_detected_ids-1] # -1 because the first tag is tag 1 not tag 0
                 obj_points.append(world_coords)
-                img_points.append(valid_image_coords)
+                img_points.append(valid_image_coords) # x and y pixel coordinates, x is right, y is down
                 used_images.append(image)
                 if plot and plotting is not None:
                     plotting.plot_detected_april_corners(im_dir+'/'+image, valid_image_coords)
@@ -87,7 +87,7 @@ class CamCalibration:
         # Calibrate the camera based on all detected tags in all provided images
         # if no initial camera matrix or distortion coefficients are provided, they are calibrated along with the extrinsics
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, resolution, cam_mat, dist_coeff, flags=flag_dict[cam_model]) # arguments are object points, image points, image size, camera matrix, distortion coefficients
-        #rvecs, tvecs are the rotation and translation of the pattern origin given in the camera frame
+        #rvecs, tvecs are the rotation and translation of the pattern origin given in the camera coordinate frame
 
         if plot and plotting is not None:
             # For debugging purposes, here the option to plot the pattern origin axes into each image. This is useful to check if the detections and conversions are correct.

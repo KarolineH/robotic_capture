@@ -15,9 +15,11 @@ try:
     # Attempt a relative import
     from .helpers import kortex_util as k_util # if being run as a package
     from .helpers import data_io
+    from .helpers import conversion as conv
 except ImportError:
     import helpers.kortex_util as k_util # local case
     import helpers.data_io as data_io
+    import helpers.conversion as conv
 
 class Kinova3:
     def __init__(self, router, transform_path=None, use_wrist_frame=False):
@@ -29,14 +31,13 @@ class Kinova3:
             if transform_path is None:
                 # Find the most recently calibrated transform file:
                 config_dir = str(pathlib.Path(__file__).parent.parent.absolute()) + '/config'
-                transform_path = os.path.join(config_dir, sorted([entry for entry in os.listdir(config_dir) if 'frame_transform' in entry])[-1])
+                transform_path = os.path.join(config_dir, sorted([entry for entry in os.listdir(config_dir) if 'dslr_transform' in entry])[-1])
             if os.path.exists(transform_path):
-                data = yaml.safe_load(open(transform_path))
-                self.camera_frame_transform = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
-                self.camera_frame_transform[3:] = np.rad2deg(self.camera_frame_transform[3:])
+                self.load_tool_transform(transform_path)
             else:
                 self.camera_frame_transform = [0, -0.045, 0.085, -90, 0, 0] # if not available, use this estimate
         print('Using camera frame transform:', self.camera_frame_transform)
+        
         self.camera_weight = 2 #kg, this is an estimate
         self.camera_center_of_mass = np.array([0, 0, 0.083]) #meters, this is an estimate
         self.base = BaseClient(router)
@@ -47,9 +48,10 @@ class Kinova3:
 
     def load_tool_transform(self, path):
         data = yaml.safe_load(open(path))
-        transform_rad = [data['x_translation'], data['y_translation'], data['z_translation'], data['theta_x'], data['theta_y'], data['theta_z']] # child_frame_name, x, y, z, orientation as extrinsic euler angels in x,y,z, order
-        transform_deg = np.rad2deg(transform_rad[3:])
-        self.camera_frame_transform = transform_deg
+        tf = np.asarray(data['transform'])
+
+        rotation = conv.mat_to_euler(tf[:3, :3])
+        self.camera_frame_transform = [tf[0, 3], tf[1, 3], tf[2, 3], rotation[0], rotation[1], rotation[2]] #x, y, z, orientation as extrinsic euler angels in x,y,z, order
         return
 
     def set_tool_info(self):
