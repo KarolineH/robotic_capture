@@ -10,6 +10,7 @@ from kinova_arm_if.helpers import conversion as conv
 from calibration.helpers import plotting
 import util 
 from scipy.spatial import distance_matrix
+from python_tsp.heuristics import solve_tsp_simulated_annealing
 
 # t_wrist_to_cam = conv.robot_poses_as_htms(np.array([-0.00034790886457611943, 0.04226343540493114, 0.08396112164677054, np.degrees(-1.581624895332124), np.degrees(-0.003688590448812868), np.degrees(-0.000676321102353462)])) #[x,y,z,theta_x,theta_y,theta_z] (in degrees)
 # t_cam_to_wrist = conv.invert_transform(t_wrist_to_cam[0])
@@ -157,31 +158,21 @@ def explore_reachability(recompute=False):
 def get_states(origin=[0,0.4,0.8], radius=0.7, n=1000, rdelta=0.1):
     origin = np.asarray([origin])
     radius = np.asarray([radius])
-    results = compute_reachables(origin, radius, n, rotation_increment=0.2)
+    results = compute_reachables(origin, radius, n, rdelta)
     # results have the format (origin, radius, joint_states, poses)
 
     cam_poses = np.asarray([res for res in results[0][-1]])
     joint_states = np.asarray([res for res in results[0][-2]])
-    #plotting.plot_transforms(cam_poses)
-    #util.plot_points(cam_poses[:, :3, 3])
-    util.save_pickle(f'offline_planning/{origin[0]}_{radius[0]}_{n}_{rdelta}.pkl', results)
 
-    # # Sort joint states to minimize total changes between them
+    # Sort joint states to minimize total changes between them
     dists = distance_matrix(joint_states, joint_states)
-
-    # sorted_indices = [0]
-    # for _ in range(len(joint_states) - 1):
-    #     last_index = sorted_indices[-1]
-    #     next_index = np.argmin(dist_matrix[last_index])
-    #     dist_matrix[:, last_index] = np.inf  # Avoid revisiting
-    #     sorted_indices.append(next_index)
-
-    # sorted_joint_states = joint_states[sorted_indices]
-    # return sorted_joint_states
-
-
+    permutation, distance = solve_tsp_simulated_annealing(dists)
+    sorted_joint_states = joint_states[permutation]
+    return sorted_joint_states
 
 if __name__ == '__main__':
-    #results = get_states([0.19195185,-0.078321,-0.014656995], 0.7, 1000, 0.1)
+    sequence = get_states([0.3,-0.03,-0.01], 0.7, 1000, 0.1)
+    np.save('offline_planning/sorted_joint_states.npy', sequence)
+    
     #results = util.load_log('offline_planning/ik_log_90.txt')
     explore_reachability(recompute=True)
