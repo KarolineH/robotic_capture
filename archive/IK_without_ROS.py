@@ -1,20 +1,9 @@
-
-# find target pose
-# one target might stay the relevant target for several frames
-
-# compare current pose with target pose
-# get the difference in position and orientation
-# define a speed scaling here that should be fixed
-# calculate a velocity in cartesian space that is proportional to the difference
-
-# get the forward kinematics (matrix) function
 import numpy as np
 from math import pi
 from visual_kinematics.RobotSerial import RobotSerial, Frame
 from scipy.spatial.transform import Rotation as Rotation
 
 class robot_planner():
-
     def __init__(self):
         ''' Robot definition '''
         a = [0,0,410,0,0,0,0]
@@ -73,20 +62,3 @@ if __name__ == '__main__':
     rev = robot.vk_to_kinova(pose)
     pose2 = robot.kinova_to_vk(rev)
     print(pose)
-
-
-
-# from autograd import grad, jacobian
-# jacobianmat = jacobian(forward)
-
-# from autograd import grad, jacobian
-# jacobianmat = jacobian(forward)
-
-
-
-# get the Jacobian of that matrix, this stays fixed
-# get the inverse of the Jacobian
-
-# now you can use this to translate velocities form cartesian space to joint space
-# multiply the velocity with the inverse Jacobian to get the joint velocity
-# apply torques that are proportional to the joint velocity

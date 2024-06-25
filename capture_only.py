@@ -10,13 +10,13 @@ from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 import kinova_arm_if.helpers.conversion as conv
 
-def main(out_dir, capture_params=[32,'AUTO','AUTO',False]):
+def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',False], use_wrist_frame=False):
     # create new directory for the current capture session
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     im_dir = os.path.join(out_dir, stamp)
     os.mkdir(im_dir)
     states_file = os.path.join(im_dir, 'states.txt')
-    poses_file = os.path.join(im_dir, 'cam_poses.txt')
+    poses_file = os.path.join(im_dir, 'raw_poses.txt')
 
     # instantiate the camera interface object
     # change capture settings if needed
@@ -28,7 +28,7 @@ def main(out_dir, capture_params=[32,'AUTO','AUTO',False]):
     # Create connection to the robot
     args = k_util.parseConnectionArguments()
     with k_util.DeviceConnection.createTcpConnection(args) as router:
-        IF = Kinova3(router)
+        IF = Kinova3(router, use_wrist_frame=use_wrist_frame)
         print(IF.camera_frame_transform)
         success = True
         running=True
@@ -55,14 +55,10 @@ def main(out_dir, capture_params=[32,'AUTO','AUTO',False]):
                     states.append(joint_state)
                     print(f"Captured image: {path}")
 
-                    with open(states_file, 'a') as f:
-                        f.write(f"{joint_state.tolist()}\n")
-                    with open(poses_file, 'a') as f:
-                        f.write(f"{cam_pose.tolist()}\n")
-                    # TODO: Change this to use numpy savetxt
-                    # with open("test.txt", "ab") as f:
-                    #   np.savetxt(f, a)
-                    #    f.write("\n") # add a newline
+                    with open(states_file, "ab") as f:
+                        np.savetxt(f,joint_state.reshape(1,-1))
+                    with open(poses_file, "ab") as f:
+                        np.savetxt(f,cam_pose.reshape(1,-1))
                         
                 if q == 'q': # q for quit
                     running = False
@@ -78,9 +74,9 @@ def main(out_dir, capture_params=[32,'AUTO','AUTO',False]):
 
 def poses_to_txt(pose_data, file_names, path):
     # First, save the raw poses to a separate file for future reference and debugging.
-    raw_poses = np.asarray(pose_data)
-    raw_file = '/'.join(path.split('/')[:-1]) + '/raw_poses.txt'
-    np.savetxt(raw_file, raw_poses, delimiter=',', comments='x,y,z,theta_x,theta_y,theta_z')
+    # raw_poses = np.asarray(pose_data)
+    # raw_file = '/'.join(path.split('/')[:-1]) + '/raw_poses.txt'
+    # np.savetxt(raw_file, raw_poses, delimiter=',', comments='x,y,z,theta_x,theta_y,theta_z')
 
     # 1. COLMAP expects the transformation from world to camera frame, not from camera to world frame. 
     # Need to invert the transformation. We will do this in homogeneous transformation matrix form.
