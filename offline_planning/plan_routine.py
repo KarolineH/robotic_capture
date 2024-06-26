@@ -155,7 +155,14 @@ def explore_reachability(recompute=False):
     util.plot_yzr_fit(results)
     return
 
-def get_states(origin=[0,0.4,0.8], radius=0.7, n=1000, rdelta=0.1):
+def get_states(origin=[0,0.4,0.8], radius=0.7, n=1000, rdelta=0.1, save=True):
+
+    '''
+    Computes a series of poses/states that are reachable for a given sphere offset and radius.
+    Poses are sorted via off-the-shelf TSP algorithm by Euclidean proximity.
+    Returns both sorted robot states and camera poses.
+    '''
+
     origin = np.asarray([origin])
     radius = np.asarray([radius])
     results = compute_reachables(origin, radius, n, rdelta)
@@ -164,15 +171,21 @@ def get_states(origin=[0,0.4,0.8], radius=0.7, n=1000, rdelta=0.1):
     cam_poses = np.asarray([res for res in results[0][-1]])
     joint_states = np.asarray([res for res in results[0][-2]])
 
-    # Sort joint states to minimize total changes between them
-    dists = distance_matrix(joint_states, joint_states)
+    # Sort by proximity of poses in Euclidean space, which does not guarantee minimal movement, but is a good starting point
+    dists = distance_matrix(cam_poses[:,:3,-1], cam_poses[:,:3,-1])
     permutation, distance = solve_tsp_simulated_annealing(dists)
     sorted_joint_states = joint_states[permutation]
-    return sorted_joint_states
+    sorted_poses = cam_poses[permutation]
+
+    if save:
+        file_base = f'{origin[0]}_{origin[1]}_{origin[2]}_{radius}_{n}'
+        np.save(f'offline_planning/{file_base}_states.npy', sorted_joint_states)
+        np.save(f'offline_planning/{file_base}_poses.npy', sorted_poses)
+
+    return sorted_joint_states, sorted_poses
 
 if __name__ == '__main__':
-    sequence = get_states([0.3,-0.03,-0.01], 0.7, 1000, 0.1)
-    np.save('offline_planning/sorted_joint_states.npy', sequence)
+    states, poses = get_states([0.3,-0.03,-0.01], 0.7, 1000, 0.1)
     
     #results = util.load_log('offline_planning/ik_log_90.txt')
-    explore_reachability(recompute=True)
+    #explore_reachability(recompute=True)
