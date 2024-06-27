@@ -52,7 +52,7 @@ def plot_detected_april_corners(img_file, coords):
     
     img = cv2.imread(img_file) # row, column
     for coord in coords:
-        cv2.circle(img, (int(coord[0]), int(coord[1])), 25, (0, 0, 255), -1)
+        cv2.circle(img, (int(coord[0][0]), int(coord[0][1])), 25, (0, 0, 255), -1)
 
     # rescale the image to fit on screen
     scale_percent = 15 # percent of original size

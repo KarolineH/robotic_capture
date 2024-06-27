@@ -5,14 +5,9 @@ import numpy as np
 # Local imports
 try:
     # Attempt a relative import
-    from .helpers import april_tag_util # if being run as a package
-    from .helpers import colmap_wrapper
-    from .helpers import colmap_io
-    from .helpers import opencv_conversions
-    plotting = None # this is usually only used for debugging, so not needed when importing as a package
+    from .helpers import april_tag_util, colmap_wrapper, plotting, colmap_io, opencv_conversions # if being run as a package
 except ImportError:
-    from helpers import april_tag_util, plotting, colmap_wrapper, colmap_io # local case
-    from helpers import opencv_conversions
+    from helpers import april_tag_util, plotting, colmap_wrapper, colmap_io, opencv_conversions # local case
 
 class CamCalibration:
 
@@ -69,14 +64,14 @@ class CamCalibration:
             # This line (above) sometimes causes a segmentation fault. This is not caught here.
             # If the warning "too many borders in contour_detect (max of 32767!)" is shown, try setting the input lower_requirements=True
 
-            if len(results) > 5: # OPENCV requires at least 6 detected locations in an image for intrinsic + extrinsic camera calibration
+            if len(results) >= 2: # OPENCV requires at least 6 detected locations in an image for intrinsic + extrinsic camera calibration, 2 tags can provide 8 corner locations
                 detected_ids = np.asarray([r.tag_id for r in results])
                 valid_detected_ids = detected_ids[np.where(detected_ids <=corner_array.shape[0])] # only use detected tags that are part of the pattern
-                image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)
+                image_coords = np.asarray([r.corners for r in results], dtype=np.float32)
                 valid_image_coords = image_coords[np.where(detected_ids <=corner_array.shape[0])]
                 world_coords = corner_array[valid_detected_ids-1] # -1 because the first tag is tag 1 not tag 0
-                obj_points.append(world_coords)
-                img_points.append(valid_image_coords) # x and y pixel coordinates, x is right, y is down
+                obj_points.append(np.array(world_coords.reshape(-1,3), dtype='float32'))
+                img_points.append(np.array(valid_image_coords.reshape(-1,2), dtype='float32')) # x and y pixel coordinates, x is right, y is down
                 used_images.append(image)
                 if plot and plotting is not None:
                     plotting.plot_detected_april_corners(im_dir+'/'+image, valid_image_coords)

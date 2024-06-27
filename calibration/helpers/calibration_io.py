@@ -63,7 +63,8 @@ def load_transform_from_yaml(in_file):
     '''
     with open(in_file, 'r') as f:
         data = yaml.safe_load(f)
-    return np.asarray(data)
+        tf = data['transform']
+    return np.asarray(tf)
 
 def fetch_recent_intrinsics_path(cam_id='mounted_camera'):
     '''
@@ -88,7 +89,7 @@ def fetch_recent_base_transform_path():
     If not available, return None.
     '''
     config_dir = str(pathlib.Path(__file__).parent.parent.parent.resolve()) + '/config' # this is the default location where calibrated transfroms are saved
-    matching_files = sorted([entry for entry in os.listdir(config_dir) if 'pattern2base' in entry]) # find all calibration data for the specified camera ID
+    matching_files = sorted([entry for entry in os.listdir(config_dir) if 'pattern_in_base' in entry]) # find all calibration data for the specified camera ID
     if len(matching_files) > 0:
         most_recent_calib = matching_files[-1] # if there is one or more, select the most recent 
         t_file = os.path.join(config_dir, most_recent_calib) # get the full file path for the most recent calibration file

@@ -17,5 +17,12 @@ def create_pattern(tag_size=0.03, tag_spacing=0.015, tag_layout=np.array([4,5]))
     # Layout is provided in [rows x columns]
     # old pattern: tag_size=0.0298235294118, tag_spacing=0.0149117647058, tag_layout=np.array([4,6]
     spacing = tag_spacing + tag_size
-    corner_array = np.array([[i * spacing, j * spacing, 0] for j in range(tag_layout[0]) for i in range(tag_layout[1])], dtype=np.float32)
+    corners_top_left = np.array([[i * spacing, j * spacing, 0] for j in range(tag_layout[0]) for i in range(tag_layout[1])], dtype=np.float32)
+    corners_top_right = corners_top_left + np.array([tag_size, 0, 0])
+    corners_bottom_right = corners_top_left + np.array([tag_size, tag_size, 0])
+    corners_bottom_left = corners_top_left + np.array([0, tag_size, 0])
+
+    corner_array = np.stack((corners_top_left, corners_top_right, corners_bottom_right, corners_bottom_left), axis=1) # dimensions are (tags x 4 x 3)
+    # clockwise order: top left, top right, bottom right, bottom left
+
     return corner_array

@@ -56,40 +56,37 @@ def coordinate(cam_coords, wrist_coords):
     '''
     This function performs two methods for eye-in-hand coordination, optimising the transform between robot wrist and camera.
     Returns the following transforms:
-    R_cam2wrist, t_cam2wrist: transforms a point given in the camera to the wrist frame
-    R_base2world, t_base2world: transforms a point given in the robot (base) frame to the "world" frame, which is the AprilTag pattern origin
-    R_wrist2cam, t_wrist2cam: transforms a point given in the wrist frame to the camera frame, should be the inverse of R_cam2wrist, t_cam2wrist transform
+    cam_in_wrist_tf, 
+    pattern_in_base_tf
     '''
 
-    # Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z] in meters and degrees
+    # Wrist poses are given as [x, y, z, theta_x, theta_y, theta_z] in meters and degrees, w.r.t the robot base
     # We convert them to 4x4 homogeneous transformation matrices
     print("Calculating the hand-eye coordination...")
 
-    wrist_in_base = conv.robot_poses_as_htms(wrist_coords) # robot wrist in base frame [n,4,4]
-    base_in_wrist = np.asarray([np.linalg.inv(mat) for mat in wrist_in_base]) # robot base in wrist frame [n,4,4]
+    wrist_in_base = conv.robot_poses_as_htms(wrist_coords) # robot wrist poses w.r.t. base frame [n,4,4]
+    base_in_wrist = np.asarray([np.linalg.inv(mat) for mat in wrist_in_base]) # robot base poses w.r.t. wrist frame [n,4,4]
 
-    wrist_R = wrist_in_base[:,:3,:3]
-    wrist_t = wrist_in_base[:,:3,3]
     base_R = base_in_wrist[:,:3,:3]
     base_t = base_in_wrist[:,:3,3]
 
-    # Camera poses are given as 4x4 homogeneous transformation matrices
-    # they are camera locations, given in the pattern frame
+    # Camera poses are given as 4x4 homogeneous transformation matrices, w.r.t. the calibration pattern origin frame ('world')
+    # = camera locations, given in the pattern frame
     # also need to be inverted
     pattern_in_cam = np.asarray([np.linalg.inv(mat) for mat in cam_coords]) # pattern in camera frame [n,4,4]
     cam_R = pattern_in_cam[:,:3,:3]
     cam_t = pattern_in_cam[:,:3,3]
 
     # Method 1: Only returns camera<>wrist transform
-    # R_cam2wrist, t_cam2wrist = cv2.calibrateHandEye(wrist_R, wrist_t, cam_R, cam_t)# method=cv2.CALIB_HAND_EYE_PARK)
+    # R_cam2wrist, t_cam2wrist = cv2.calibrateHandEye(wrist_in_base[:,:3,:3], wrist_in_base[:,:3,3], pattern_in_cam[:,:3,:3], pattern_in_cam[:,:3,3])# method=cv2.CALIB_HAND_EYE_PARK)
     # there are also different method implementations available, see (HandEyeCalibrationMethod)
     # output is the camera pose relative to the wrist pose, so the transformation from the wrist to the camera
 
     # Method 2: Returns both camera<>wrist and base<>pattern transform to anker both in a common world frame
     # From initial tests, this method seems to yield more accurate results
-    R_base_in_pattern, t_base_in_pattern, R_wrist2cam, t_wrist2cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t)
+    R_base_in_pattern, t_base_in_pattern, R_wrist_in_cam, t_wrist_in_cam = cv2.calibrateRobotWorldHandEye(cam_R, cam_t, base_R, base_t, method=cv2.CALIB_HAND_EYE_TSAI)
     # R_base2world, t_base2world: transforms a point given in the robot (base) frame to the "world" frame, which is the AprilTag pattern origin. The is the same as the robot base pose expressed in the pattern origin frame
-    # R_wrist2cam, t_wrist2cam: transforms a point given in the wrist frame to the camera frame. This is the same as the wrist pose expressed in the camera frame.
+    # R_wrist_in_cam, t_wrist_in_cam: transforms a point given in the wrist frame to the camera frame. This is the same as the wrist pose expressed in the camera frame.
 
     base_in_pattern_tf = np.zeros((4,4))
     base_in_pattern_tf[:3,:3] = R_base_in_pattern
@@ -99,8 +96,8 @@ def coordinate(cam_coords, wrist_coords):
     pattern_in_base_tf = np.linalg.inv(base_in_pattern_tf) # the pose of the calibration pattern expressed in the robot base frame
 
     wrist_in_cam_tf = np.zeros((4,4))
-    wrist_in_cam_tf[:3,:3] = R_wrist2cam
-    wrist_in_cam_tf[:3,3] = t_wrist2cam.flatten()
+    wrist_in_cam_tf[:3,:3] = R_wrist_in_cam
+    wrist_in_cam_tf[:3,3] = t_wrist_in_cam.flatten()
     wrist_in_cam_tf[3,3] = 1
 
     cam_in_wrist_tf = np.linalg.inv(wrist_in_cam_tf) # the transform from the camera to the wrist frame, or the pose of the camera expressed in the wrist frame
@@ -131,9 +128,8 @@ def save_coordination(cam_tf,pattern_tf=None,stamp=''):
         yaml.dump(data, open(pattern_path, 'w'), default_flow_style=False)
     return
 
-def main(cam_id = 'EOS01'):
-    data_dir = '/home/kh790/data/scans/2024-06-21_11-07-33'#calibration_imgs/hand_eye_coord/2024-06-25_16-42-05'
-    cam_in_world, used = get_camera_poses(data_dir, cam_id, calibrate_intrinsics=False) # calculate camera poses from images of the calibration pattern
+def main(data_dir, cam_id = 'EOS01'):
+    cam_in_world, used = get_camera_poses(data_dir, cam_id, calibrate_intrinsics=True) # calculate camera poses from images of the calibration pattern
     print(f"{len(used)} images were useable for eye-in-hand calibration")
 
     # Find the wrist poses that correspond to the images which were successfully used for calibration
@@ -150,4 +146,5 @@ def main(cam_id = 'EOS01'):
     print("Hand-eye coordination complete.")
 
 if __name__ == "__main__":
-    main()
+    im_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-06-27_12-12-37'
+    main(im_dir)

@@ -11,6 +11,13 @@ from eos_camera_if.cam_io import EOS
 import kinova_arm_if.helpers.conversion as conv
 
 def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',False], use_wrist_frame=False):
+
+    ''' 
+    Capture a series of still images, along with the measured camera/wrist pose and the measured joint angles.
+    Save the images and the recorded data to files in the specified output directory.
+    The robot movements should be controlled manually, this script only captures images.
+    '''
+        
     # create new directory for the current capture session
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     im_dir = os.path.join(out_dir, stamp)
@@ -56,9 +63,9 @@ def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',Fals
                     print(f"Captured image: {path}")
 
                     with open(states_file, "ab") as f:
-                        np.savetxt(f,joint_state.reshape(1,-1))
+                        np.savetxt(f,joint_state.reshape(1,-1),  delimiter=',')
                     with open(poses_file, "ab") as f:
-                        np.savetxt(f,cam_pose.reshape(1,-1))
+                        np.savetxt(f,cam_pose.reshape(1,-1), delimiter=',')
                         
                 if q == 'q': # q for quit
                     running = False
@@ -100,4 +107,5 @@ def poses_to_txt(pose_data, file_names, path):
 
 if __name__ == "__main__":
     output_directory = '/home/kh790/data/scans'
-    main(output_directory)
+    output_directory = '/home/kh790/data/calibration_imgs/hand_eye_coord'
+    main(output_directory, use_wrist_frame=True)
