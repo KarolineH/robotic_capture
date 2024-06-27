@@ -100,8 +100,14 @@ class SyncRecorder:
 
 
 if __name__ == "__main__":
+
+    ### USAGE EXAMPLES
     rec = SyncRecorder()
+
+    # record, wait, stop
     rec.start_all()
     time.sleep(6)
     rec.stop_all()
-    #rec.rec_all_for_duration(5)
+
+    # record for a fixed duration
+    rec.rec_all_for_duration(5)

@@ -1,19 +1,20 @@
 # eos_camera_if
 This is a python interface for remote controlling one or multiple Canon EOS R5 C cameras.
-Includes I/O control via the Camera's USB port as well as an additional passive recording channel via HDMI.
+Includes I/O control via the Camera's USB port (cam_io.py) as well as an additional passive recording channel from the camera's HDMI output (recording.py).
 
 # Set-up instructions
 1. Install the requirements (listed below).
-2. Make sure all cameras are equipped with fully charged batteries.
+2. Make sure all cameras are equipped with charged batteries.
 3. Confirm that all cameras are equipped with SD cards.\
 If the card is new or was previously formatted (initialized) by another camera or computer, it is advised to format the card using the camera's own menu. 
-4. Turn on all cameras by setting the switches to PHOTO (recommended) or VIDEO mode.
+4. Turn on all cameras by setting the switches to PHOTO or VIDEO mode. Please note that many functions are only available in one of the two modes.
 
 #### To use the USB I/O control
 5. Connect all cameras to the PC via USB.
 6. To check if everything is ready, open a terminal and run 'gphoto2 --auto-detect'\
 If any of the cameras are not detected, please refer to gphoto2 documentation.
 7. We also advise to turn the 'Auto rotate' feature OFF in the camera menu (on the camera itself) and we mostly use the 'Scene Intelligent Auto' or 'Flexible-priority AE' shooting modes. Please refer to the camera manual for details.
+
 #### To use the passive HDMI recording
 8. Connect your camera via HDMI to an HDMI capture device. Then connect the capture device to your PC.\
 This is necessary to convert the HDMI-out signal. We use the startech.com 4K30-HDMI-CAPTURE device, which works natively in Ubuntu. Otherwise follow the manufacturer's recommendation for setup, drivers etc. 
@@ -25,6 +26,7 @@ This is necessary to convert the HDMI-out signal. We use the startech.com 4K30-H
 # Quick start
 After following the set-up instructions, take a look at io_usage_examples.py, especially the top-level API calls: get_capture_parameters(), capture_image(), capture_video(), and show_live_preview().
 For HDMI recording, recording.py has some usage examples at the end of the file.
+multi_camera_rec.py offers a class for synchronising the recording of videos with multiple EOS cameras. Usage examples are at the bottom of the file.
 
 # Camera Mode selection
 - Use PHOTO mode for capturing stills and also for maximum control over capture parameters, including ISO and autofocus 

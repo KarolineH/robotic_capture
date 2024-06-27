@@ -9,6 +9,11 @@ try:
 except ImportError:
     import helpers.rec_util as rec_util
 
+''' 
+This Recorder class is used to stream and record the "liveview"/preview/viewfinder image from the EOS R5 C camera.
+The camera must be connected via HDMI capture device (HDMI-to-USB) and listed as a video capture device. 
+'''
+
 class Recorder:
     def __init__(self, device_name=None):
         
@@ -78,44 +83,8 @@ class Recorder:
             if cv2.waitKey(1) == ord('q'):
                 break
 
-    def record(self, output_file, duration=None):
-        '''
-        OBSOLTETE
-        Record a video to a sepcified file.
-        TODO: Implement a way to stop the recording after a certain duration.
-        Optionally, specify a duration (in seconds) to record for.
-        Otherwise interrupt the recording with Ctrl+C when done.
-        '''
-
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_file, fourcc, 60, (1920, 1080))
-        start = time.time()
-
-        try:
-            if duration is None:
-                print("Recording. Press Ctrl+C to stop.")
-                while True:
-                    ret, frame = self.cap.read()
-                    if not ret:
-                        print("Error: Failed to capture frame")
-                        break
-                    # Write the frame to the output file
-                    out.write(frame)
-            else:
-                print(f"Recording for {duration} second(s).")
-                while time.time() - start < duration:
-                    ret, frame = self.cap.read()
-                    if not ret:
-                        print("Error: Failed to capture frame")
-                        break
-                    # Write the frame to the output file
-                    out.write(frame)
-        except KeyboardInterrupt:
-            out.release()
-
     def close(self):
         self.cap.release()
-
 
 if __name__ == '__main__':
     # instantiate a Recorder object
