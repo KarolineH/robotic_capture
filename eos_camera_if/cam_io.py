@@ -954,6 +954,38 @@ class EOS(object):
 
     ''' VIDEO mode only methods'''
 
+    def start_rec_vid(self):
+        if self.mode == 0:
+            error_msg = "Camera must be in VIDEO mode to record full-res videos"
+            print(error_msg)
+            return False, None, error_msg
+        
+        self.set_config_fire_and_forget('movierecordtarget', 'Card')
+        return
+    
+    def stop_rec_vid(self, download=True, target_path='.', save_timeout=5):
+        if self.mode == 0:
+            error_msg = "Camera must be in VIDEO mode to record full-res videos"
+            print(error_msg)
+            return False, None, error_msg
+        
+        self.set_config_fire_and_forget('movierecordtarget', 'None')
+        # fetching the file
+        timeout = time.time() + save_timeout
+        if download:
+            while True:
+                # potential for errors if the new file event is not caught by this wait loop
+                event_type, event_data = self.camera.wait_for_event(1000)
+                if event_type == gp.GP_EVENT_FILE_ADDED:
+                    cam_file = self.camera.file_get(event_data.folder, event_data.name, gp.GP_FILE_TYPE_NORMAL)
+                    cam_file.save(target_path+'/'+event_data.name)
+                    return True, target_path+'/'+event_data.name, 'File downloaded to PC'
+                elif time.time() > timeout:
+                    error_msg = "Warning: Waiting for new file event timed out, capture may have failed."
+                    print(error_msg)
+                    return True, None, error_msg
+        return True, None, 'saved to camera'
+
     def record_video(self, t=1, download=True, target_path='.', save_timeout=5):
         '''
         Record a video for a duration of t seconds.
