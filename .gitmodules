@@ -1,0 +1,3 @@
+[submodule "eos_camera_if"]
+	path = eos_camera_if
+	url = https://github.com/KarolineH/eos_camera_if.git

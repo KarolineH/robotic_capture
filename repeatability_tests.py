@@ -29,7 +29,7 @@ def set_vs_measured_states():
     This recording routine can take around 30 minutes to complete, depending on the number of states, waiting times, and range of tested speeds.
     Works best when continuous autofocus is enabled and the auto focus mode is set to face tracking.
     '''
-    test_speed_limits = [10,20,30,40]
+    test_speed_limits = [10]
     num_measurements = 40
     sleep_time = 5 # seconds
 
@@ -65,7 +65,7 @@ def set_vs_measured_states():
 
         for speed in test_speed_limits:
             joint_speeds = [speed] * 6
-            IF.set_speed_limit(joint_speeds=joint_speeds, control_mode=4)
+            #IF.set_speed_limit(joint_speeds=joint_speeds, control_mode=4)
             
             errors_by_speed = []
             timesteps_by_speed = []
@@ -109,7 +109,7 @@ def set_vs_measured_states():
             np.save(f, timesteps)
         poses_unravelled = [pose.tolist() for entry in poses_overall for pose in entry]
         json.dump(poses_unravelled, open(os.path.join(im_dir, 'measured_cam_poses.json'), 'w'))
-        IF.reset_speed_limit()
+        #IF.reset_speed_limit()
     return im_dir
 
 def analyse_joint_errors(im_dir):
@@ -347,15 +347,14 @@ def plot_errors_from_files(im_dir):
         plot_pose_errors(tl_err[i*set_length:(i+1)*set_length], rot_err[i*set_length:(i+1)*set_length])
     return
 
-
 def main(cam_id='EOS01'):
     # Take measurements
     #im_dir = set_vs_measured_states()
     # alternatively specify a previous measurement set
-    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-05-23_10-49-27'#'/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'#'/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
 
     #analyse_joint_errors(im_dir)
-    analyse_pose_errors(im_dir, cam_id)
+    #analyse_pose_errors(im_dir, cam_id)
     plot_errors_from_files(im_dir)
 
 if __name__ == "__main__":
