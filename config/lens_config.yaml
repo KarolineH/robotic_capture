@@ -1,0 +1,13 @@
+0:
+  lens_id: 0
+  lens_name: 'Canon RF 28mm F2.8 STM'
+  focal_length: 28 # mm
+  min_aperture: 22 # e.g. put 22 for f/22
+  set_focus_distance: 10 # number of large steps up from minimum focus distance when adjusting using GPhoto2 (In manual focus this translates to between 0.5 and 1)
+
+1:
+  lens_id: 1
+  lens_name: 'Canon RF 70-200mm F2.8L IS USM'
+  focal_length: 70 # mm
+  min_aperture: 32 # e.g. put 22 for f/22
+  set_focus_distance: 3 # number of steps up from minimum focus distance when adjusting using GPhoto2

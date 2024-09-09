@@ -66,6 +66,15 @@ def load_transform_from_yaml(in_file):
         tf = data['transform']
     return np.asarray(tf)
 
+def load_lens_config(in_file, lens_id=0):
+    '''
+    Load a lens configuration from a yaml file.
+    '''
+    with open(in_file, 'r') as f:
+        lens_data = yaml.safe_load(f)
+    return lens_data[lens_id]['focal_length'], lens_data[lens_id]['min_aperture'], lens_data[lens_id]['set_focus_distance']
+    
+
 def fetch_recent_intrinsics_path(cam_id='mounted_camera'):
     '''
     Fetch the path of the most recent camera intrinsics from the config directory.
