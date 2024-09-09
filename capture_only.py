@@ -10,7 +10,7 @@ from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 import kinova_arm_if.helpers.conversion as conv
 
-def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',False], use_wrist_frame=False):
+def main(out_dir='/home/kh790/data/scans', capture_params=[22,'AUTO','AUTO',False], use_wrist_frame=False):
 
     ''' 
     Capture a series of still images, along with the measured camera/wrist pose and the measured joint angles.
@@ -106,6 +106,5 @@ def poses_to_txt(pose_data, file_names, path):
             f.write("\n") # add a newline between each pose, COLMAP expects this
 
 if __name__ == "__main__":
-    output_directory = '/home/kh790/data/scans'
-    output_directory = '/home/kh790/data/calibration_imgs/hand_eye_coord'
+    output_directory = '/home/kh790/data/scans/manual'
     main(output_directory, use_wrist_frame=True)

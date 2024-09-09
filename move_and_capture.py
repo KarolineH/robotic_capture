@@ -111,11 +111,11 @@ def poses_to_txt(pose_data, file_names, path):
 if __name__ == "__main__":
 
     output_directory = '/home/kh790/data/scans'
-    capture_params=[32,'AUTO','AUTO',False] # aperture, shutter speed, ISO, continuous autofocus
+    capture_params=[22,'AUTO','AUTO',False] # aperture, shutter speed, ISO, continuous autofocus
     wait_time = 5 #seconds, wait time can be 0 if you want to keep moving, it can also be none to wait for a key press instead of a timer
     use_wrist_frame = True # optionally record the pose of the robot end-effector/wrist frame instead of the camera pose, so as to not use a previously calibrated camera frame transform
     
     #states = np.array([[0,0,0,0,0,0],[30,0,0,0,0,0],[15,0,0,0,0,0]]) # np array of joint states, nx6
-    states = np.loadtxt('/home/kh790/data/states/scan_8_states.txt', delimiter=',')
+    states = np.loadtxt('/home/kh790/data/calibration_imgs/intrinsics/2024-09-09_16-26-11/states.txt', delimiter=',')
 
     main(output_directory, capture_params, wait_time, use_wrist_frame, states)

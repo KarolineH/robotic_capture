@@ -66,6 +66,12 @@ class CamCalibration:
 
             if len(results) >= 2: # OPENCV requires at least 6 detected locations in an image for intrinsic + extrinsic camera calibration, 2 tags can provide 8 corner locations
                 detected_ids = np.asarray([r.tag_id for r in results])
+
+                # valid IDs are numbers 1-20 by default
+                # additional valid IDs are numbers 81 onwards
+                #detected_ids = detected_ids[np.where(np.logical_and(detected_ids>80, detected_ids<=100))] - 80
+                detected_ids = detected_ids[np.where(detected_ids>80)] - 80
+
                 valid_detected_ids = detected_ids[np.where(detected_ids <=corner_array.shape[0])] # only use detected tags that are part of the pattern
                 image_coords = np.asarray([r.corners for r in results], dtype=np.float32)
                 valid_image_coords = image_coords[np.where(detected_ids <=corner_array.shape[0])]
@@ -88,6 +94,9 @@ class CamCalibration:
             # For debugging purposes, here the option to plot the pattern origin axes into each image. This is useful to check if the detections and conversions are correct.
             for image, rotation, translation in zip(used_images, rvecs, tvecs):
                 plotting.plot_axes_on_img(im_dir+'/'+image, mtx, dist, rotation, translation) # plot the axes of the first detected tag into each image
+        else:
+            plotting.plot_axes_on_img(im_dir+'/'+used_images[-1], mtx, dist, rvecs[-1], tvecs[-1])
+
 
         # the rotation and translation vectors bring the pattern from object frame to camera frame, that's the same as the pose of the pattern origin given in the camera frame
         homogeneous_transforms = [opencv_conversions.rodrigues_rvec_tvec_to_homogeneous(rvec, tvec) for rvec, tvec in zip(rvecs, tvecs)]
