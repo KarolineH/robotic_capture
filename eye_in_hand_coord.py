@@ -65,7 +65,7 @@ def coordinate(cam_coords, wrist_coords):
     print("Calculating the hand-eye coordination...")
 
     wrist_in_base = conv.robot_poses_as_htms(wrist_coords) # robot wrist poses w.r.t. base frame [n,4,4]
-    base_in_wrist = np.asarray([np.linalg.inv(mat) for mat in wrist_in_base]) # robot base poses w.r.t. wrist frame [n,4,4]
+    base_in_wrist = np.asarray([conv.invert_transform(mat) for mat in wrist_in_base]) # robot base poses w.r.t. wrist frame [n,4,4]
 
     base_R = base_in_wrist[:,:3,:3]
     base_t = base_in_wrist[:,:3,3]
@@ -137,7 +137,7 @@ def main(data_dir, cam_id = 'EOS01'):
     indices = np.asarray([np.where(np.array(all_imgs)==name) for name in used]).flatten()
 
     wrist_in_robot = load_wrist_poses(data_dir)
-    wrist_in_robot = wrist_in_robot[indices] # [x, y, z, theta_x, theta_y, theta_z]
+    wrist_in_robot = wrist_in_robot[sorted(indices)] # [x, y, z, theta_x, theta_y, theta_z]
 
     # finally, perform calibration
     cam_in_wrist_tf, pattern_in_base_tf = coordinate(cam_in_world, wrist_in_robot)
@@ -146,5 +146,5 @@ def main(data_dir, cam_id = 'EOS01'):
     print("Hand-eye coordination complete.")
 
 if __name__ == "__main__":
-    im_dir = '/home/kh790/data/calibration_imgs/hand_eye_coord/2024-06-27_12-12-37'
+    im_dir = '/home/kh790/data/calibration_imgs/eye_hand/2024-09-09_18-44-56'
     main(im_dir)
