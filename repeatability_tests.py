@@ -18,7 +18,7 @@ from eos_camera_if.cam_io import EOS
 from kinova_arm_if.helpers import conversion
 from calibration.helpers import plotting
 
-def set_vs_measured_states():
+def set_vs_measured_states(output_dir, focus_dist=10, sequence_file='/home/kh790/data/paths/intrinsics_calib.txt', capture_params=[22,'AUTO','AUTO',False]):
     '''
     Move through a sequence of joint states
     Measures the joint angles repeatedly immediately after reaching the state
@@ -29,25 +29,27 @@ def set_vs_measured_states():
     This recording routine can take around 30 minutes to complete, depending on the number of states, waiting times, and range of tested speeds.
     Works best when continuous autofocus is enabled and the auto focus mode is set to face tracking.
     '''
-    test_speed_limits = [10]
-    num_measurements = 40
+
+    num_measurements = 40 # number of pose measurements to take after arriving at each state
     sleep_time = 5 # seconds
 
     # create new directory for the images and measurements
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    im_dir = f'/home/kh790/data/test_measurements/set_vs_measured_states/{stamp}'
+    im_dir = f'{output_dir}/{stamp}'
     os.mkdir(im_dir)
 
     # load the movement sequence
+    states = np.loadtxt(sequence_file, delimiter=',') # a pre-recorded path of joint states loaded from file
+    sequence = [data_io.create_angular_action(np.asarray(goal)) for goal in states]
+
     actions_dir = str(pathlib.Path(__file__).parent.resolve()) + '/kinova_arm_if/actions'
-    sequence, action_list = data_io.read_action_from_file(actions_dir + "/orienting the robot's new workspace for caliibration.json")
-    rest_position = data_io.read_action_from_file(actions_dir + "/REST01.json")
-    ready_position = data_io.read_action_from_file(actions_dir + "/Camera UP position.json")
+    rest_pose = data_io.read_action_from_file(actions_dir + "/standby_pose.json")
+    ready_pose = data_io.read_action_from_file(actions_dir + "/ready_pose.json")
 
     # prep the camera
-    capture_params=[32,'AUTO','AUTO',True]
     cam = EOS()
     cam.set_capture_parameters(*capture_params)
+    set_focus(cam, focus_dist)
 
     # Create connection to the robot
     args = k_util.parseConnectionArguments()
@@ -55,110 +57,96 @@ def set_vs_measured_states():
         IF = Kinova3(router)
         success = True
 
-        # double check that the robot starts out in its safe resting position
-        success &= IF.execute_action(rest_position)
-        success &= IF.execute_action(ready_position) # reach the starting position
+        # double check that the robot starts out in its safe start pose
+        success &= IF.execute_action(ready_pose) # reach the starting position
 
-        errors_overall = []
-        timesteps_overall = []
-        poses_overall = []
+        errors = []
+        timestamps = []
+        poses = []
 
-        for speed in test_speed_limits:
-            joint_speeds = [speed] * 6
-            #IF.set_speed_limit(joint_speeds=joint_speeds, control_mode=4)
-            
-            errors_by_speed = []
-            timesteps_by_speed = []
-            poses_by_speed = []
+        # Reach a series of joint states
+        for i,state in enumerate(sequence):
+            errors_by_state = []# [measurements x joints]
+            timestamps_by_state = []
+        
+            target = [joint.value for joint in list(state.reach_joint_angles.joint_angles.joint_angles)]
+            IF.execute_action(state)
+            start = time.time()
+            for j in range(num_measurements):
+                timestamps_by_state.append(time.time() - start)
+                measured_state = IF.get_joint_angles() # measure the reached joint angles
+                diff = np.subtract(measured_state, target) # calculate the error between the measured and target joint angles
+                errors_by_state.append(diff)
 
-            # Reach a series of joint states
-            for i,state in enumerate(action_list):
-                target = [joint.value for joint in list(state.reach_joint_angles.joint_angles.joint_angles)]
-                IF.execute_action(state)
+            errors.append(errors_by_state) # [states x measurements x joints]
+            timestamps.append(timestamps_by_state)
 
-                errors_by_state = []# [measurements x joints]
-                timesteps_by_state = []
-                start = time.time()
-                for j in range(num_measurements):
-                    measured_state = IF.get_joint_angles()
-                    diff = np.subtract(measured_state, target)
-                    errors_by_state.append(diff)
-                    timesteps_by_state.append(time.time() - start)
+            time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
+            cam_pose = IF.get_pose() # now measure the pose (coordinates) of the camera after settling
+            poses.append(cam_pose)
+            path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
 
-                errors_by_speed.append(errors_by_state) # [states x measurements x joints]
-                timesteps_by_speed.append(timesteps_by_state)
+        success &= IF.execute_action(ready_pose)
 
-                time.sleep(sleep_time) # wait longer here if the robot tends to shake/vibrate, to make sure an image is captured without motion blur and at the correct position
-                cam_pose = IF.get_pose()
-                poses_by_speed.append(cam_pose)
-                path, cam_path, msg = cam.capture_image(download=True, target_path=im_dir) # capture an image and download it to the specified directory
+        errors = np.asarray(errors) # shape [states,measurements,joints]
+        timestamps = np.asarray(timestamps) # shape [states,measurements,joints]
+        poses = np.asarray(poses) # shape [states,6], each being the camera pose [x,y,z,theta_x,theta_y,theta_z]
 
-            errors_overall.append(errors_by_speed)
-            timesteps_overall.append(timesteps_by_speed)
-            poses_overall.append(poses_by_speed)
-
-        success &= IF.execute_action(ready_position)
-        success &= IF.execute_action(rest_position)
-
-        errors = np.asarray(errors_overall) # shape [speeds,states,measurements,joints]
-        timesteps = np.asarray(timesteps_overall) # shape [speeds,states,measurements,joints]
-
-        with open(os.path.join(im_dir, 'states_errors.npy'), 'wb') as f:
+        with open(os.path.join(im_dir, 'state_errors.npy'), 'wb') as f:
             np.save(f, errors)
-        with open(os.path.join(im_dir, 'states_timesteps.npy'), 'wb') as f:
-            np.save(f, timesteps)
-        poses_unravelled = [pose.tolist() for entry in poses_overall for pose in entry]
-        json.dump(poses_unravelled, open(os.path.join(im_dir, 'measured_cam_poses.json'), 'w'))
-        #IF.reset_speed_limit()
+        with open(os.path.join(im_dir, 'state_timestamps.npy'), 'wb') as f:
+            np.save(f, timestamps)
+        np.savetxt(os.path.join(im_dir, 'measured_cam_poses.txt'), poses, delimiter=',')
     return im_dir
+
+def set_focus(cam, focus_dist):
+    for i in range(17):
+        cam.manual_focus(value=2) # bring the focus gradually to the near point for a fixed reference point
+        time.sleep(0.25)
+    for i in range(focus_dist):
+        cam.manual_focus(value=6) # focus manually to the desired distance as specified in nr. of large steps
+        time.sleep(0.25)
+    print(f"Focus set to {focus_dist} steps from near limit.")
+    return
 
 def analyse_joint_errors(im_dir):
     '''
     Plot the errors in the measured joint angles compared to the set joint angles recorded in set_vs_measured_states
     '''
 
-    with open(os.path.join(im_dir, 'states_errors.npy'), 'rb') as f:
+    with open(os.path.join(im_dir, 'state_errors.npy'), 'rb') as f:
         errors = np.load(f)
-    with open(os.path.join(im_dir, 'states_timesteps.npy'), 'rb') as f:
-        timesteps = np.load(f)
-
-    speeds = [10,20,30,40]
+    with open(os.path.join(im_dir, 'state_timestamps.npy'), 'rb') as f:
+        timestamps = np.load(f)
 
     # Dimensions of the error array
-    num_figures, num_lines, num_x_values, num_subplots = errors.shape
-    for fig_idx in range(num_figures):
-        plt.figure(fig_idx + 1)
-        for subplot_idx in range(num_subplots):
-            if subplot_idx == 0:
-                ax1 = plt.subplot(2, 3, 1)
-            else:
-                plt.subplot(2, 3, subplot_idx +1, sharey=ax1)
-            for line_idx in range(num_lines):
-                plt.plot(timesteps[fig_idx, line_idx], errors[fig_idx, line_idx, :, subplot_idx], label=f'Line {line_idx + 1}')
-            if subplot_idx == 0:
-                plt.legend(['pose 1', 'pose 2', 'pose 3', 'pose 4', 'pose 5', 'pose 6', 'pose 7', 'pose 8', 'pose 9'])
-            plt.title(f'Joint nr. {subplot_idx + 1}')
-            plt.xlabel('Time [s]')
-            plt.ylabel('Error [°]')
-            plt.ylim(-0.2, 0.2)
-            plt.xlim(0, 0.8)
-        plt.suptitle(f'Speed limit {speeds[fig_idx]} [°/s]')
+    num_lines, num_x_values, num_subplots = errors.shape
+    plt.figure()
+    for subplot_idx in range(num_subplots):
+        if subplot_idx == 0:
+            ax1 = plt.subplot(2, 3, 1)
+        else:
+            plt.subplot(2, 3, subplot_idx +1, sharey=ax1)
+        for line_idx in range(num_lines):
+            plt.plot(timestamps[line_idx], errors[line_idx, :, subplot_idx], label=f'Line {line_idx + 1}')
+        plt.title(f'Joint nr. {subplot_idx + 1}')
+        plt.xlabel('Time [s]')
+        plt.ylabel('Error [°]')
+        plt.ylim(-0.2, 0.2)
+        plt.xlim(0, 0.8)
 
     # Show the plots
+    plt.savefig(os.path.join(im_dir, f'joint_errors.png')) # save to png
     plt.show()
-    # save to png
-    for i in range(num_figures):
-        plt.figure(i + 1)
-        plt.savefig(os.path.join(im_dir, f'joint_errors_speed_{speeds[i]}.png'))
     return
 
 def analyse_pose_errors(im_dir, cam_id):
     '''
+    Compares camera poses recorded by the robot arm with camera poses derived from tags in images. 
     Computation time scales with the number of images, this might take a while.
     '''
     # read file
-    with open(os.path.join(im_dir, 'measured_cam_poses.json'), 'r') as f:
-        poses = np.asarray(json.load(f))
+    poses = np.loadtxt(os.path.join(im_dir, 'measured_cam_poses.txt'), delimiter=',') # [n,6]
     if len([item for item in os.listdir(im_dir) if '.JPG' in item]) != poses.shape[0]:
         raise ValueError('Number of images and number of poses do not match')
     
@@ -186,12 +174,12 @@ def analyse_pose_errors(im_dir, cam_id):
     
     all_imgs = sorted([f for f in os.listdir(im_dir) if f.endswith('.JPG')])
     indices = np.asarray([np.where(np.array(all_imgs)==name) for name in used]).flatten()
-    cam_in_base = poses[indices,:] # [x,y,z,theta_x,theta_y,theta_z]
+    cam_in_base = poses[sorted(indices),:] # [x,y,z,theta_x,theta_y,theta_z]
     cam_in_base_mat = conversion.robot_poses_as_htms(cam_in_base) # convert to homogeneous transformation matrices
     result1 = analyse_relatvive_tf_errors(cam_in_base_mat, cam_in_pattern)
 
     # multiply (transform from camera to robot base frame) x (transform from robot base to world frame) to get the (transform from camera to world frame)
-    cam_poses_from_robot = t @ cam_in_base_mat # poses of the camera, given in the pattern frame, as derived from the robot's proprioception measurements
+    cam_poses_from_robot = conversion.invert_transform(t) @ cam_in_base_mat # poses of the camera, given in the pattern frame, as derived from the robot's proprioception measurements
     cam_poses_from_images = cam_in_pattern # poses of the camera, given in the pattern frame, as derived from the AprilTag locations in the images
 
     try:
@@ -211,13 +199,13 @@ def analyse_pose_errors(im_dir, cam_id):
     # methods from https://stackoverflow.com/questions/6522108/error-between-two-rotations
     # and https://math.stackexchange.com/questions/2113634/comparing-two-rotation-matrices
 
-    # save results
     tl_err = diff[:,:3,3]
+    # save results
     with open(os.path.join(im_dir, 'translation_errors.npy'), 'wb') as f:
         np.save(f, diff[:,:3,3])
     with open(os.path.join(im_dir, 'rotation_errors.npy'), 'wb') as f:
         np.save(f, rot_err2)
-    plot_pose_errors(tl_err, rot_err2)
+    plot_pose_errors(tl_err, rot_err2, im_dir)
     return
 
 def relative_tf_between_poses(T1, T2):
@@ -252,7 +240,7 @@ def analyse_relatvive_tf_errors(robot_tfs, tag_tfs):
     print(f'Max rotation error: {np.max(angle_diff_deg)} degrees')
     return True
 
-def plot_pose_errors(tl_err, rot_err):
+def plot_pose_errors(tl_err, rot_err, im_dir):
     max_err = np.ceil(np.max(np.max(abs(tl_err), axis=0))*1000)/1000
 
     fig = plt.figure()
@@ -282,80 +270,30 @@ def plot_pose_errors(tl_err, rot_err):
     print(f'Max errors: {np.max(abs(tl_err[:,0]))} meters in x, {np.max(abs(tl_err[:,1]))} meters in y, {np.max(abs(tl_err[:,2]))} meters in z, and {np.max(rot_err)} degrees in rotation')
     print(f'Mean errors: {np.mean(abs(tl_err[:,0]))} meters in x, {np.mean(abs(tl_err[:,1]))} meters in y, {np.mean(abs(tl_err[:,2]))} meters in z, and {np.mean(rot_err)} degrees in rotation')
 
+    plt.savefig(os.path.join(im_dir, f'pose_errors.png')) # save to png
     plt.show()
 
-def plot_pose_errors_by_repeat(tl_err, rot_err, repeats=4):
-    set_length = int(tl_err.shape[0]/repeats)
-    fig = plt.figure()
-    ax1 = fig.add_subplot(2,2,1)
-    plt.title('Translation errors in x')
-    plt.plot(tl_err[:set_length,0], label='10°/s')
-    plt.plot(tl_err[set_length:2*set_length,0], label='20°/s')
-    plt.plot(tl_err[2*set_length:3*set_length,0], label='30°/s')
-    plt.plot(tl_err[3*set_length:,0], label='40°/s')
-    plt.xlabel('Pose Nr. along the path')
-    plt.ylabel('Error [m]')
-    plt.axhline(0, color='r')
-    plt.legend()
+def main(out_dir='/home/kh790/data/tests', record=False, cam_id='EOS01', lens_id=0):
 
-    ax2 = fig.add_subplot(2,2,2)
-    plt.plot(tl_err[:set_length,1], label='10°/s')
-    plt.plot(tl_err[set_length:2*set_length,1], label='20°/s')
-    plt.plot(tl_err[2*set_length:3*set_length,1], label='30°/s')
-    plt.plot(tl_err[3*set_length:,1], label='40°/s')
-    plt.title('Translation errors in y')
-    plt.xlabel('Pose Nr. along the path')
-    plt.ylabel('Error [m]')
-    plt.axhline(0, color='r')
-    plt.legend()
+    calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config' # default location is the config directory of this package
+    __, min_aperture, focus_dist = calibration_io.load_lens_config(calibr_dir + '/lens_config.yaml', lens_id)
 
-    ax3 = fig.add_subplot(2,2,3)
-    plt.plot(tl_err[:set_length,2], label='10°/s')
-    plt.plot(tl_err[set_length:2*set_length,2], label='20°/s')
-    plt.plot(tl_err[2*set_length:3*set_length,2], label='30°/s')
-    plt.plot(tl_err[3*set_length:,2], label='40°/s')
-    plt.title('Translation errors in z')
-    plt.xlabel('Pose Nr. along the path')
-    plt.ylabel('Error [m]')
-    plt.axhline(0, color='r')
-    plt.legend()
 
-    ax4 = fig.add_subplot(2,2,4)
-    plt.plot(rot_err[:set_length], label='10°/s')
-    plt.plot(rot_err[set_length:2*set_length], label='20°/s')
-    plt.plot(rot_err[2*set_length:3*set_length], label='30°/s')
-    plt.plot(rot_err[3*set_length:], label='40°/s')
-    plt.title('Rotation errors')
-    plt.xlabel('Pose Nr. along the path')
-    plt.ylabel('Error [°]')
-    plt.legend()
-    plt.show()
-    return
-
-def plot_errors_from_files(im_dir):
-    with open(os.path.join(im_dir, 'translation_errors.npy'), 'rb') as f:
-        tl_err = np.load(f)
-    with open(os.path.join(im_dir, 'rotation_errors.npy'), 'rb') as f:
-        rot_err = np.load(f)
-    plot_pose_errors(tl_err, rot_err)
-    plot_pose_errors_by_repeat(tl_err, rot_err, repeats=4)
-
-    # and again split by speed
-    speeds = [10,20,30,40]
-    set_length = int(tl_err.shape[0]/len(speeds))
-    for i,speed in enumerate(speeds):
-        plot_pose_errors(tl_err[i*set_length:(i+1)*set_length], rot_err[i*set_length:(i+1)*set_length])
-    return
-
-def main(cam_id='EOS01'):
     # Take measurements
-    #im_dir = set_vs_measured_states()
-    # alternatively specify a previous measurement set
-    im_dir = '/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'#'/home/kh790/data/test_measurements/set_vs_measured_states/2024-03-18_15-31-43'
+    if record:
+        image_path = set_vs_measured_states(out_dir, focus_dist, capture_params=[min_aperture,'AUTO','AUTO',False])
+    else:
+        # If the images have already been captured, set the path to the directory containing the images
+        image_path = out_dir
 
-    #analyse_joint_errors(im_dir)
-    #analyse_pose_errors(im_dir, cam_id)
-    plot_errors_from_files(im_dir)
+
+    analyse_joint_errors(image_path)
+    analyse_pose_errors(image_path, cam_id)
 
 if __name__ == "__main__":
-    main()
+
+    #out_dir = '/home/kh790/data/tests'
+    out_dir = '/home/kh790/data/tests/2024-09-11_14-59-48'
+    record = False
+
+    main(out_dir, record)

@@ -163,8 +163,8 @@ def main(cam_id='EOS01', lens=0, cam_model='OPENCV', record=False):
     #Adjust the output_directory if needed
     if record:
 
-        __, focal_length, focus_dist = calibration_io.load_lens_config(calibr_dir + '/lens_config.yaml', lens_id=lens)
-        im_dir = record_data(capture_params=[focal_length,'AUTO','AUTO',False], focus_dist=focus_dist)
+        __, min_aperture, focus_dist = calibration_io.load_lens_config(calibr_dir + '/lens_config.yaml', lens_id=lens)
+        im_dir = record_data(capture_params=[min_aperture,'AUTO','AUTO',False], focus_dist=focus_dist)
         if im_dir is None:
             return
     else:

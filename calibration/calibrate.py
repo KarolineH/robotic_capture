@@ -94,8 +94,8 @@ class CamCalibration:
             # For debugging purposes, here the option to plot the pattern origin axes into each image. This is useful to check if the detections and conversions are correct.
             for image, rotation, translation in zip(used_images, rvecs, tvecs):
                 plotting.plot_axes_on_img(im_dir+'/'+image, mtx, dist, rotation, translation) # plot the axes of the first detected tag into each image
-        else:
-            plotting.plot_axes_on_img(im_dir+'/'+used_images[-1], mtx, dist, rvecs[-1], tvecs[-1])
+        # else:
+        #     plotting.plot_axes_on_img(im_dir+'/'+used_images[-1], mtx, dist, rvecs[-1], tvecs[-1])
 
 
         # the rotation and translation vectors bring the pattern from object frame to camera frame, that's the same as the pose of the pattern origin given in the camera frame
