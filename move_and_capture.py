@@ -31,7 +31,9 @@ def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',Fals
     # Instantiate the two log files, recording the measured states and measured camera poses
     states_file = os.path.join(im_dir, 'visited_states.txt')
     poses_file = os.path.join(im_dir, 'raw_poses.txt')
-    im_names_file = os.path.join(im_dir, 'im_names.txt') 
+    im_names_file = os.path.join(im_dir, 'im_names.txt')
+    with open(poses_file, "w") as f:
+        f.write(f'# Using wrist frame: {use_wrist_frame} \n')
 
     # format the goal states as Kinova robot actions
     actions = [data_io.create_angular_action(np.asarray(goal)) for goal in goal_states]
@@ -110,15 +112,20 @@ def poses_to_txt(pose_data, file_names, path):
 
 if __name__ == "__main__":
 
-    common_paths = {'scan': '/home/kh790/data/scans', 'coord': '/home/kh790/data/calibration_imgs/eye_hand', 'intrinsics': '/home/kh790/data/calibration_imgs/intrinsics'} 
+    common_tasks = {'scan': ('/home/kh790/data/scans',False), # for 3D scanning
+                    'coord': ('/home/kh790/data/calibration_imgs/eye_hand',True), # for hand-eye calibration
+                    'intrinsics': ('/home/kh790/data/calibration_imgs/intrinsics',False) # for camera intrinsics calibration
+                    }
 
-    #select a target path for the recording
-    output_directory = common_paths['scan']
+    #select a type of recording, which determines the target path and whether to use the wrist frame or calibrated camera frame
+    output_directory = common_tasks['scan'][0]
+    use_wrist_frame = common_tasks['scan'][1] # pre-settings for each type of recording, e.g. when coordinating you want to record wrist instead of camera frame
+    #use_wrist_frame = True # optionally change the setting here, either record the robot end-effector/wrist frame OR the calibrated camera pose using a previously calibrated camera frame transform
 
-    # set desired parameters
+    # set more desired parameters
     capture_params=[22,'AUTO','AUTO',False] # aperture, shutter speed, ISO, continuous autofocus
     wait_time = 5 #seconds, wait time can be 0 if you want to keep moving, it can also be none to wait for a key press instead of a timer
-    use_wrist_frame = True # optionally record the pose of the robot end-effector/wrist frame instead of the camera pose, so as to not use a previously calibrated camera frame transform
+    #TODO set focus distance
     
     #states = np.array([[0,0,0,0,0,0],[30,0,0,0,0,0],[15,0,0,0,0,0]]) # np array of joint states, nx6
     states = np.loadtxt('/home/kh790/data/paths/intrinsics_calib.txt', delimiter=',') # a pre-recorded path of joint states loaded from file
