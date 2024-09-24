@@ -3,14 +3,16 @@
 import os
 import datetime
 import numpy as np
+import pathlib 
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.kbhit as kbhit
 from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 import kinova_arm_if.helpers.conversion as conv
+from calibration.helpers import calibration_io
 
-def main(out_dir='/home/kh790/data/scans', capture_params=[22,'AUTO','AUTO',False], use_wrist_frame=False):
+def main(out_dir='/home/kh790/data/scans', capture_params=[22,'AUTO','AUTO',False], focus_dist=10, use_wrist_frame=False):
 
     ''' 
     Capture a series of still images, along with the measured camera/wrist pose and the measured joint angles.
@@ -31,6 +33,7 @@ def main(out_dir='/home/kh790/data/scans', capture_params=[22,'AUTO','AUTO',Fals
     # also continuous autofocus is enabled, you can instead add a focus operation before each capture
     cam = EOS()
     cam.set_capture_parameters(*capture_params)
+    cam.fixed_focus(focus_dist)
 
     # Create connection to the robot
     args = k_util.parseConnectionArguments()
@@ -106,5 +109,10 @@ def poses_to_txt(pose_data, file_names, path):
             f.write("\n") # add a newline between each pose, COLMAP expects this
 
 if __name__ == "__main__":
-    output_directory = '/home/kh790/data/scans/manual'
-    main(output_directory, use_wrist_frame=True)
+    output_directory = '/home/kh790/data/paths'
+
+    calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config' # default location is the config directory of this package
+    __, min_aperture, focus_dist = calibration_io.load_lens_config(calibr_dir + '/lens_config.yaml', lens_id=0)
+
+
+    main(output_directory, focus_dist=focus_dist, use_wrist_frame=True)

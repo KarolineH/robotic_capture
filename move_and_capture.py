@@ -4,6 +4,7 @@ import os
 import datetime
 import numpy as np
 import time
+import pathlib
 
 import kinova_arm_if.helpers.kortex_util as k_util
 import kinova_arm_if.helpers.kbhit as kbhit
@@ -11,9 +12,10 @@ import kinova_arm_if.helpers.data_io as data_io
 from kinova_arm_if.arm_if import Kinova3
 from eos_camera_if.cam_io import EOS
 import kinova_arm_if.helpers.conversion as conv
+from calibration.helpers import calibration_io
 
 
-def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',False], wait_time=None, use_wrist_frame=False, goal_states=[]):
+def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',False], focus_dist=10, wait_time=None, use_wrist_frame=False, goal_states=[]):
 
     ''' 
     Move through a sequence of goal states (np array of nx6 joint angles, given in degrees).
@@ -41,6 +43,7 @@ def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',Fals
     # instantiate the camera interface object (default: small aperture to reduce Bokeh effects)
     cam = EOS()
     cam.set_capture_parameters(*capture_params)
+    cam.fixed_focus(focus_dist)
 
     # Create connection to the robot
     args = k_util.parseConnectionArguments()
@@ -108,26 +111,27 @@ def poses_to_txt(pose_data, file_names, path):
         for i in range(len(pose_data)):
             # COLMAP expects image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, file name
             f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 {file_names[i]}\n")
-            f.write("\n") # add a newline between each pose, COLMAP expects this
 
 if __name__ == "__main__":
-
     common_tasks = {'scan': ('/home/kh790/data/scans',False), # for 3D scanning
                     'coord': ('/home/kh790/data/calibration_imgs/eye_hand',True), # for hand-eye calibration
                     'intrinsics': ('/home/kh790/data/calibration_imgs/intrinsics',False) # for camera intrinsics calibration
                     }
+    calibr_dir = str(pathlib.Path(__file__).parent.resolve()) + '/config' # default location is the config directory of this package
 
+
+    ''' Set the parameters for the recording session here '''
     #select a type of recording, which determines the target path and whether to use the wrist frame or calibrated camera frame
-    output_directory = common_tasks['scan'][0]
-    use_wrist_frame = common_tasks['scan'][1] # pre-settings for each type of recording, e.g. when coordinating you want to record wrist instead of camera frame
+    output_directory, use_wrist_frame = common_tasks['scan']# pre-settings for each type of recording, e.g. when coordinating you want to record wrist instead of camera frame
     #use_wrist_frame = True # optionally change the setting here, either record the robot end-effector/wrist frame OR the calibrated camera pose using a previously calibrated camera frame transform
 
     # set more desired parameters
-    capture_params=[22,'AUTO','AUTO',False] # aperture, shutter speed, ISO, continuous autofocus
+    __, min_aperture, focus_dist = calibration_io.load_lens_config(calibr_dir + '/lens_config.yaml', lens_id=0)
+    focus_dist=10
+    capture_params=[min_aperture,'AUTO','AUTO',False] # aperture, shutter speed, ISO, continuous autofocus
     wait_time = 5 #seconds, wait time can be 0 if you want to keep moving, it can also be none to wait for a key press instead of a timer
-    #TODO set focus distance
-    
-    #states = np.array([[0,0,0,0,0,0],[30,0,0,0,0,0],[15,0,0,0,0,0]]) # np array of joint states, nx6
-    states = np.loadtxt('/home/kh790/data/paths/intrinsics_calib.txt', delimiter=',') # a pre-recorded path of joint states loaded from file
 
-    main(output_directory, capture_params, wait_time, use_wrist_frame, states)
+    #states = np.array([[0,0,0,0,0,0],[30,0,0,0,0,0],[15,0,0,0,0,0]]) # np array of joint states, nx6
+    states = np.loadtxt('/home/kh790/data/paths/scan_path.txt', delimiter=',') # a pre-recorded path of joint states loaded from file
+
+    main(output_directory, capture_params, focus_dist, wait_time, use_wrist_frame, states)

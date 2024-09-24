@@ -1,0 +1,25 @@
+image_width: 8192
+image_height: 5464
+camera_name: EOS01
+camera_matrix:
+  rows: 3
+  cols: 3
+  data:
+  - 6501.354429444247
+  - 0.0
+  - 4247.448111672693
+  - 0.0
+  - 6516.439336810564
+  - 2220.2953820210664
+  - 0.0
+  - 0.0
+  - 1.0
+distortion_model: OPENCV
+distortion_coefficients:
+  rows: 1
+  cols: 4
+  data:
+  - 0.012667431954147507
+  - -0.11872578786442681
+  - -0.02621400862806481
+  - 0.0032470600813112216
