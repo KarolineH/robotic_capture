@@ -57,6 +57,8 @@ def main(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',Fals
         for i,action in enumerate(actions):
             print(f"Moving to goal state {i+1}/{len(actions)}")
             success &= IF.execute_action(action)
+            if i==0:
+                success &= IF.execute_action(action) # the first action is sometimes executed without locking the thread, make sure it has been executed before moving on
             if wait_time is not None:
                 time.sleep(wait_time)
             else:
@@ -128,6 +130,7 @@ if __name__ == "__main__":
     # set more desired parameters
     __, min_aperture, focus_dist = calibration_io.load_lens_config(calibr_dir + '/lens_config.yaml', lens_id=0)
     focus_dist=10
+    use_wrist_frame = True
     capture_params=[min_aperture,'AUTO','AUTO',False] # aperture, shutter speed, ISO, continuous autofocus
     wait_time = 5 #seconds, wait time can be 0 if you want to keep moving, it can also be none to wait for a key press instead of a timer
 
