@@ -68,9 +68,9 @@ class CamCalibration:
                 detected_ids = np.asarray([r.tag_id for r in results])
 
                 # valid IDs are numbers 1-20 by default
-                # additional valid IDs are numbers 81 onwards
-                #detected_ids = detected_ids[np.where(np.logical_and(detected_ids>80, detected_ids<=100))] - 80
-                detected_ids = detected_ids[np.where(detected_ids>80)] - 80
+                # if you want to use higher tags, either subtract the offset or re-define the pattern
+                # e.g. using 20 valid IDs, numbers 81 onwards
+                # detected_ids = detected_ids[np.where(detected_ids>80)] - 80
 
                 valid_detected_ids = detected_ids[np.where(detected_ids <=corner_array.shape[0])] # only use detected tags that are part of the pattern
                 image_coords = np.asarray([r.corners for r in results], dtype=np.float32)
