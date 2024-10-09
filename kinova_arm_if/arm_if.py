@@ -22,7 +22,7 @@ except ImportError:
     import helpers.conversion as conv
 
 class Kinova3:
-    def __init__(self, router, transform_path=None, use_wrist_frame=False):
+    def __init__(self, router, transform_path=None, use_wrist_frame=True):
         
         self.TIMEOUT_DURATION = 35 # Maximum allowed waiting time during actions (in seconds)
         if use_wrist_frame:
@@ -38,8 +38,8 @@ class Kinova3:
                 self.camera_frame_transform = [0, -0.045, 0.085, -90, 0, 0] # if not available, use this estimate
         print('Using camera frame transform:', self.camera_frame_transform)
         
-        self.camera_weight = 2 #kg, this is an estimate
-        self.camera_center_of_mass = np.array([0, 0, 0.083]) #meters, this is an estimate
+        self.camera_weight = 0.8 #kg, this is an estimate
+        self.camera_center_of_mass = np.array([0, 0, 0.05]) #meters, this is an estimate
         self.base = BaseClient(router)
         self.base_cyclic = BaseCyclicClient(router)
         self.control_config = ControlConfigClient(router)
