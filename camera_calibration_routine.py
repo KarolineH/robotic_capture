@@ -169,7 +169,7 @@ def main(cam_id='EOS01', lens=0, cam_model='OPENCV', record=False):
             return
     else:
         #alternatively use a previously recorded set of images, specify the directory here
-        im_dir = '/home/kh790/data/calibration_imgs/intrinsics/2024-09-09_17-28-12'
+        im_dir = '/home/kh790/data/calibration_imgs/intrinsics/2024-10-31_17-34-33'
 
 
     # Then use the recorded data to calibrate the camera intrinsics
@@ -184,4 +184,4 @@ def main(cam_id='EOS01', lens=0, cam_model='OPENCV', record=False):
 if __name__ == "__main__":
     # camera model options: 'OPENCV', 'SIMPLE_PINHOLE', 'FULL_OPENCV'
     # lens options 0=28mm lens (default), 1=70mm lens
-    main(cam_id='EOS01', lens=0, cam_model = 'FULL_OPENCV', record=False)
+    main(cam_id='EOS01', lens=0, cam_model = 'SIMPLE_PINHOLE', record=False)

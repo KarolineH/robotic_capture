@@ -125,8 +125,8 @@ def main(directory):
 
     # Specify the series of joint states for the robot to visit and capture images at:
     #states = np.array([[0,0,0,0,0,0],[30,0,0,0,0,0],[15,0,0,0,0,0]]) # np array of joint states, nx6
-    states = np.loadtxt('/home/kh790/data/paths/scan_path.txt', delimiter=',') # a pre-recorded path of joint states loaded from file
-    states = np.loadtxt('/home/kh790/data/paths/short_test_path.txt', delimiter=',')
+    #states = np.loadtxt('/home/kh790/data/paths/scan_path.txt', delimiter=',') # a pre-recorded path of joint states loaded from file
+    states = np.loadtxt('/home/kh790/data/paths/intrinsics_calib.txt', delimiter=',')
 
     capture(directory, capture_params, focus_dist, wait_time, states)
 

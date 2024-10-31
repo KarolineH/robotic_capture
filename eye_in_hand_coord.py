@@ -129,7 +129,7 @@ def save_coordination(cam_tf,pattern_tf=None,stamp=''):
     return
 
 def main(data_dir, cam_id = 'EOS01'):
-    cam_in_world, used = get_camera_poses(data_dir, cam_id, calibrate_intrinsics=True) # calculate camera poses from images of the calibration pattern
+    cam_in_world, used = get_camera_poses(data_dir, cam_id, calibrate_intrinsics=False) # calculate camera poses from images of the calibration pattern
     print(f"{len(used)} images were useable for eye-in-hand calibration")
 
     # Find the wrist poses that correspond to the images which were successfully used for calibration
@@ -146,5 +146,5 @@ def main(data_dir, cam_id = 'EOS01'):
     print("Hand-eye coordination complete.")
 
 if __name__ == "__main__":
-    im_dir = '/home/kh790/data/calibration_imgs/eye_hand/2024-09-09_18-44-56'
+    im_dir = '/home/kh790/data/calibration_imgs/intrinsics/2024-10-31_17-34-33'
     main(im_dir)

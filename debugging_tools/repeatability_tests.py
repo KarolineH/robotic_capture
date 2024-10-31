@@ -17,6 +17,8 @@ from calibration.helpers import calibration_io as calibration_io
 from eos_camera_if.cam_io import EOS
 from kinova_arm_if.helpers import conversion
 from calibration.helpers import plotting
+import kinova_arm_if.helpers.wrist_to_cam_tf as wrist_to_cam
+
 
 def set_vs_measured_states(output_dir, focus_dist=10, sequence_file='/home/kh790/data/paths/intrinsics_calib.txt', capture_params=[22,'AUTO','AUTO',False]):
     '''
@@ -150,6 +152,11 @@ def analyse_pose_errors(im_dir, cam_id):
     if len([item for item in os.listdir(im_dir) if '.JPG' in item]) != poses.shape[0]:
         raise ValueError('Number of images and number of poses do not match')
     
+    # these are wrist poses in the robot base frame, as measured by the robot
+    # need to convert to camera poses
+    cam_tfs = wrist_to_cam.wrist_to_cam_poses(os.path.join(im_dir, 'measured_cam_poses.txt'))
+
+    
     # get the camera poses from the images via AprilTag detection and OpenCV calibration, then compare
     cc = CamCalibration(cam_id, im_dir)
     # get the most recent camera calibration file (intrinsics), if available
@@ -174,8 +181,10 @@ def analyse_pose_errors(im_dir, cam_id):
     
     all_imgs = sorted([f for f in os.listdir(im_dir) if f.endswith('.JPG')])
     indices = np.asarray([np.where(np.array(all_imgs)==name) for name in used]).flatten()
-    cam_in_base = poses[sorted(indices),:] # [x,y,z,theta_x,theta_y,theta_z]
-    cam_in_base_mat = conversion.robot_poses_as_htms(cam_in_base) # convert to homogeneous transformation matrices
+
+    cam_in_base_mat = cam_tfs[sorted(indices),:,:]
+    # cam_in_base = poses[sorted(indices),:] # [x,y,z,theta_x,theta_y,theta_z]
+    # cam_in_base_mat = conversion.robot_poses_as_htms(cam_in_base) # convert to homogeneous transformation matrices
     result1 = analyse_relatvive_tf_errors(cam_in_base_mat, cam_in_pattern)
 
     # multiply (transform from camera to robot base frame) x (transform from robot base to world frame) to get the (transform from camera to world frame)
@@ -292,8 +301,8 @@ def main(out_dir='/home/kh790/data/tests', record=False, cam_id='EOS01', lens_id
 
 if __name__ == "__main__":
 
-    #out_dir = '/home/kh790/data/tests'
-    out_dir = '/home/kh790/data/tests/2024-09-11_14-59-48'
+    out_dir = '/home/kh790/data/tests'
+    out_dir = '/home/kh790/data/tests/2024-10-31_17-59-05'
     record = False
 
     main(out_dir, record)
