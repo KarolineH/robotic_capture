@@ -84,7 +84,7 @@ def capture(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',F
 
     with open(im_names_file, 'r') as f:
         im_files = f.readlines()
-    im_file_names = [os.path.basename(f) for f in im_files]
+    im_file_names = [os.path.basename(f).strip() for f in im_files]
 
     cam_tfs = wrist_to_cam.wrist_to_cam_poses(poses_file) # convert the raw wrist poses to camera poses using the latest eye-in-hand calibration results
     poses_to_colmap_format(cam_tfs, im_file_names, os.path.join(im_dir, 'images.txt')) # save the camera poses in the format required by COLMAP
@@ -110,7 +110,7 @@ def poses_to_colmap_format(tfs, file_names, path):
         f.write("# id, QW, QX, QY, QZ, TX, TY, TZ, camera_id\n")
         for i in range(len(tfs)):
             # COLMAP expects image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, file name
-            f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 {file_names[i]}\n")
+            f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 {file_names[i]}\n\n")
     return
 
 # TODO: poses_to_NeRF_format() function
