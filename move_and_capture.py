@@ -34,6 +34,7 @@ def capture(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',F
     # Instantiate the log files, recording the measured states and measured poses
     states_file = os.path.join(im_dir, 'visited_states.txt')
     poses_file = os.path.join(im_dir, 'raw_poses.txt') # raw poses are the robot wrist (=end-effector) poses, not the camera poses
+    cam_transforms_file = os.path.join(im_dir, 'cam_tfs.txt') # camera poses w.r.t. the robot base frame, saves as homogeneous transformation matrices
     im_names_file = os.path.join(im_dir, 'im_names.txt')
     with open(poses_file, "w") as f:
         f.write(f'# Poses are given as the robot wrist frame w.r.t. the robot base frame\n')
@@ -86,9 +87,12 @@ def capture(out_dir='/home/kh790/data/scans', capture_params=[32,'AUTO','AUTO',F
         im_files = f.readlines()
     im_file_names = [os.path.basename(f).strip() for f in im_files]
 
-    cam_tfs = wrist_to_cam.wrist_to_cam_poses(poses_file) # convert the raw wrist poses to camera poses using the latest eye-in-hand calibration results
+    cam_tfs = wrist_to_cam.wrist_to_cam_poses(poses_file) # convert the raw wrist poses to camera poses using the latest eye-in-hand calibration results, in robot base frame
+    reshaped_cam_tfs = cam_tfs.reshape(cam_tfs.shape[0],-1)
+    np.savetxt(cam_transforms_file, reshaped_cam_tfs, delimiter=',') # save the camera poses in the robot base frame
     poses_to_colmap_format(cam_tfs, im_file_names, os.path.join(im_dir, 'images.txt')) # save the camera poses in the format required by COLMAP
-    # TODO also save the cameras.txt in the COLMAP format
+    create_cameras_file(os.path.join(im_dir, 'cameras.txt')) # save the camera intrinsics in the format required by COLMAP
+    # TODO also save poses in the NeRF format
     from calibration.helpers import plotting
     plotting.plot_transforms(cam_tfs)
     return
@@ -110,10 +114,27 @@ def poses_to_colmap_format(tfs, file_names, path):
         f.write("# id, QW, QX, QY, QZ, TX, TY, TZ, camera_id\n")
         for i in range(len(tfs)):
             # COLMAP expects image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, file name
-            f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 {file_names[i]}\n\n")
+            f.write(f"{i+1} {quaternions[i][0]} {quaternions[i][1]} {quaternions[i][2]} {quaternions[i][3]} {ts[i][0]} {ts[i][1]} {ts[i][2]} 1 {file_names[i]}\n")
     return
 
-# TODO: poses_to_NeRF_format() function
+def create_cameras_file(path):
+    calib_file=calibration_io.fetch_recent_intrinsics_path('EOS01')
+    cam_id, frame_size, matrix, distortion, cam_model = calibration_io.load_intrinsics_from_yaml(calib_file)
+
+    if cam_model == 'SIMPLE_PINHOLE':
+        param_string = f"{np.around(matrix[0,0],decimals=6)} {np.around(matrix[0,2],decimals=6)} {np.around(matrix[1,2],decimals=6)}" # f, cx, cy
+    elif cam_model == 'OPENCV':
+        param_string = f"{np.around(matrix[0,0],decimals=6)} {np.around(matrix[1,1],decimals=6)} {np.around(matrix[0,2],decimals=6)} {np.around(matrix[1,2],decimals=6)} {np.around(distortion[0],decimals=6)} {np.around(distortion[1],decimals=6)} {np.around(distortion[2],decimals=6)} {np.around(distortion[3],decimals=6)}" # fx, fy, cx, cy, k1, k2, p1, p2
+    elif cam_model == 'FULL_OPENCV':
+        param_string = f"{np.around(matrix[0,0],decimals=6)} {np.around(matrix[1,1],decimals=6)} {np.around(matrix[0,2],decimals=6)} {np.around(matrix[1,2],decimals=6)} {np.around(distortion[0],decimals=6)} {np.around(distortion[1],decimals=6)} {np.around(distortion[2],decimals=6)} {np.around(distortion[3],decimals=6)} {np.around(distortion[4],decimals=6)}" # fx, fy, cx, cy, k1, k2, p1, p2, k3, k4, k5, k6
+
+    with open(path, 'w') as f:
+        f.write("# Camera list with one line of data per camera:\n")
+        f.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
+        f.write("# Number of cameras: 1\n")
+        f.write(f"1 {cam_model} {frame_size[0]} {frame_size[1]} {param_string}\n")
+    print("camera details saved to file in COLMAP format")
+    return
 
 def main(directory):
 
